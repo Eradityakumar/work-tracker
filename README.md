@@ -101,7 +101,7 @@ Visit [http://localhost:3000](http://localhost:3000).
 - **Styling**: Tailwind CSS, next-themes (Dark & Light Mode)
 - **Icons**: Lucide React
 - **Charts**: Recharts
-- **Database**: SQLite (local zero-config) / PostgreSQL (production) with Prisma ORM
+- **Database**: MongoDB Atlas with Prisma ORM
 - **Authentication**: JWT session tokens with `jose` and `bcryptjs`
 - **AI**: OpenAI API (`gpt-4o`) with heuristic local fallback
 - **Exports**: `jspdf`, `jspdf-autotable`, `xlsx`
