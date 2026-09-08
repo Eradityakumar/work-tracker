@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String
+  password    String
+  role        String       @default("EMPLOYEE") // "EMPLOYEE" | "ADMIN"
+  department  String       @default("Engineering")
+  designation String       @default("Software Engineer")
+  avatar      String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  workLogs    WorkLog[]
+  journals    Journal[]
+  reports     Report[]
+  attachments Attachment[]
+  aiInsights  AIInsight[]
+}
+
+model WorkLog {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  category        String       @default("Development") // Development, Meeting, Research, Design, Documentation, Review, Operations
+  date            String       // Format YYYY-MM-DD
+  startTime       String       // e.g. "09:00"
+  endTime         String       // e.g. "11:30"
+  durationMinutes Int          @default(0)
+  priority        String       @default("MEDIUM") // "LOW" | "MEDIUM" | "HIGH"
+  status          String       @default("COMPLETED") // "PENDING" | "IN_PROGRESS" | "COMPLETED"
+  organization    String       @default("Galactic 3D") // "Galactic 3D" | "Cambridge Institute of Technology"
+  notes           String?
+  learnings       String?
+  tags            String?      // comma-separated tags e.g. "frontend,react,auth"
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  attachments     Attachment[]
+}
+
+model Attachment {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workLogId         String?
+  workLog           WorkLog?  @relation(fields: [workLogId], references: [id], onDelete: SetNull)
+  fileName          String
+  fileType          String
+  fileSize          Int
+  url               String    // Data URI or hosted URL
+  extractedText     String?
+  aiSummary         String?
+  suggestedCategory String?
+  createdAt         DateTime  @default(now())
+}
+
+model Journal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String   // YYYY-MM-DD
+  reflection  String
+  learnings   String?
+  actionItems String?
+  isPrivate   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String   // "DAILY" | "WEEKLY" | "MONTHLY" | "TEAM"
+  title             String
+  periodStart       String
+  periodEnd         String
+  content           String   // Markdown / JSON summary
+  hoursWorked       Float    @default(0.0)
+  tasksCompleted    Int      @default(0)
+  productivityScore Int      @default(85)
+  createdAt         DateTime @default(now())
+}
+
+model AIInsight {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // "PRODUCTIVITY" | "FOCUS" | "RECOMMENDATION"
+  title       String
+  description String
+  score       Int?
+  metrics     String?  // JSON string
+  createdAt   DateTime @default(now())
+}
