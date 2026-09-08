@@ -73,23 +73,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Demo Fast Login Strip */}
-        <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
-          <p className="text-[11px] font-semibold text-foreground text-center">
-            ⚡ Quick Demo Access
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail("employee@worktrail.ai");
-              setPassword("password123");
-              toast.info("Filled demo credentials!");
-            }}
-            className="w-full py-2 px-3 rounded-lg bg-background border border-border hover:border-primary text-xs font-semibold text-foreground transition-all shadow-xs flex items-center justify-center gap-2"
-          >
-            <span>👤 Fill Demo Credentials (employee@worktrail.ai)</span>
-          </button>
-        </div>
 
         {/* Login Form */}
         <div className="p-6 rounded-2xl border border-border bg-card shadow-xl space-y-4">

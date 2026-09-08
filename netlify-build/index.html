@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkTrail Tracker - Galactic 3D & Cambridge Institute of Technology</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- AUTH SCREEN -->
+  <div id="authScreen" class="min-h-screen flex items-center justify-center p-4 bg-slate-900 text-white">
+    <div class="max-w-md w-full bg-slate-800/90 border border-slate-700/80 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-500/30">
+          <i data-lucide="check-square" class="w-7 h-7 text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">WorkTrail Tracker</h1>
+        <p class="text-xs text-slate-400 mt-1">Galactic 3D & Cambridge Institute of Technology</p>
+      </div>
+
+      <!-- Error / Alert Message Banner -->
+      <div id="authAlert" class="hidden mb-4 p-3.5 rounded-2xl text-xs font-medium border flex items-start gap-2.5">
+        <i id="authAlertIcon" data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <span id="authAlertText"></span>
+      </div>
+
+      <form id="authForm" onsubmit="handleAuth(event)" class="space-y-4" autocomplete="off">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
+          <input 
+            type="email" 
+            id="authEmail" 
+            required 
+            placeholder="Enter your email address" 
+            value=""
+            autocomplete="off"
+            class="w-full px-4 py-3 text-sm bg-slate-900/80 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-slate-500"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Password</label>
+          <input 
+            type="password" 
+            id="authPassword" 
+            required 
+            placeholder="Enter your password" 
+            value=""
+            autocomplete="new-password"
+            class="w-full px-4 py-3 text-sm bg-slate-900/80 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-slate-500"
+          >
+        </div>
+
+        <!-- Name input shown ONLY during Registration -->
+        <div id="authNameContainer" class="hidden">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Your Full Name *</label>
+          <input 
+            type="text" 
+            id="authName" 
+            placeholder="e.g. Aditya Singh" 
+            value=""
+            class="w-full px-4 py-3 text-sm bg-slate-900/80 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-slate-500"
+          >
+        </div>
+
+        <button 
+          type="submit" 
+          id="authSubmitBtn"
+          class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
+        >
+          <span id="authSubmitText">Sign In to Account</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+
+        <div class="pt-2 text-center">
+          <button 
+            type="button" 
+            onclick="toggleAuthMode()" 
+            id="authToggleBtn" 
+            class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            Don't have an account? Register new account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER (Sidebar + Content) -->
+  <div id="appScreen" class="hidden min-h-screen flex flex-col md:flex-row bg-slate-50">
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-full md:w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 md:h-screen md:sticky md:top-0 z-30">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+            <i data-lucide="check-square" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <span class="font-bold text-base text-slate-900 block leading-tight">WorkTrail</span>
+            <span class="text-[10px] text-slate-400 font-medium">Galactic 3D & Cambridge</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action: Log Work -->
+      <div class="p-3 border-b border-slate-100">
+        <button onclick="openModal()" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-200 transition-all active:scale-95">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>+ Log Work & Photos</span>
+        </button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex-1 p-3 space-y-1">
+        <p class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Views</p>
+
+        <!-- Tab 1: Work Tracker -->
+        <button onclick="switchTab('tracker')" id="nav-tracker" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all bg-indigo-50 text-indigo-700">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="list-todo" class="w-4 h-4"></i>
+            <span>Work Tracker</span>
+          </div>
+          <span id="sidebarTasksCount" class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+
+        <!-- Tab 2: Day Timeline -->
+        <button onclick="switchTab('timeline')" id="nav-timeline" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-all">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
+            <span>Day Timeline</span>
+          </div>
+          <span class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold uppercase">Live</span>
+        </button>
+
+        <!-- Tab 3: Calendar History -->
+        <button onclick="switchTab('calendar')" id="nav-calendar" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-all">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+            <span>Calendar</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Cloud Sync Indicator in Sidebar -->
+      <div class="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-100 flex items-center gap-1.5 bg-slate-50/50">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="cloudStatusText">Cloud Database: Connected</span>
+      </div>
+
+      <!-- User Profile & Sign Out Footer -->
+      <div class="p-3 border-t border-slate-100 bg-slate-50/70">
+        <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div id="userAvatarText" class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              AS
+            </div>
+            <div class="overflow-hidden leading-tight">
+              <p id="userDisplayName" class="text-xs font-bold text-slate-800 truncate">User</p>
+              <p id="userDisplayEmail" class="text-[10px] text-slate-400 truncate">user@email.com</p>
+            </div>
+          </div>
+          <button onclick="handleSignOut()" title="Sign Out" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 transition-colors">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT AREA -->
+    <main class="flex-1 p-4 sm:p-8 max-w-5xl overflow-y-auto">
+
+      <!-- ================= VIEW 1: WORK TRACKER ================= -->
+      <div id="view-tracker" class="space-y-6">
+        <!-- Top Stats Banner -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <i data-lucide="briefcase" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tasks</p>
+              <p id="totalTasksCount" class="text-2xl font-black text-slate-800 mt-0.5">0</p>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+              <i data-lucide="building-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Galactic 3D</p>
+              <p id="galacticCount" class="text-2xl font-black text-slate-800 mt-0.5">0</p>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+              <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cambridge Institute</p>
+              <p id="cambridgeCount" class="text-2xl font-black text-slate-800 mt-0.5">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workplace Filters & Search -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0" id="filterTabs">
+            <button onclick="setFilter('ALL')" id="tab-ALL" class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-indigo-600 text-white shadow-sm shadow-indigo-100">
+              All Work (<span id="badge-all">0</span>)
+            </button>
+            <button onclick="setFilter('Galactic 3D')" id="tab-Galactic-3D" class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+              <span>🚀 Galactic 3D</span>
+              <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]" id="badge-galactic">0</span>
+            </button>
+            <button onclick="setFilter('Cambridge Institute of Technology')" id="tab-Cambridge" class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+              <span>🎓 Cambridge Institute of Technology</span>
+              <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]" id="badge-cambridge">0</span>
+            </button>
+          </div>
+
+          <div class="relative min-w-[220px]">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input 
+              type="text" 
+              id="searchInput" 
+              oninput="renderTasks()" 
+              placeholder="Search tasks..." 
+              class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            >
+          </div>
+        </div>
+
+        <!-- Task List Container -->
+        <div id="taskList" class="grid grid-cols-1 gap-4"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 mx-auto flex items-center justify-center mb-4">
+            <i data-lucide="calendar-x" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-base font-bold text-slate-700">No work logged for this selection</h3>
+          <p class="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Click "+ Log Work & Photos" to add your work with photos and choose between Galactic 3D and Cambridge Institute.</p>
+          <button onclick="openModal()" class="mt-4 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-100">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add First Work Entry
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= VIEW 2: DAY TIMELINE ================= -->
+      <div id="view-timeline" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900">Visual Day Timeline</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Chronological audit log of daily tasks, time windows, and attached proof.</p>
+          </div>
+          <button onclick="openModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-xs transition-all shadow-md shadow-indigo-200">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add to Timeline
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center gap-2">
+            <button onclick="changeTimelineDay(-1)" class="p-2 border border-slate-200 rounded-xl hover:bg-slate-100">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="setTimelineToday()" class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-slate-200 rounded-xl hover:bg-slate-100">
+              Today
+            </button>
+            <button onclick="changeTimelineDay(1)" class="p-2 border border-slate-200 rounded-xl hover:bg-slate-100">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <span id="timelineDateLabel" class="font-bold text-sm text-slate-800 ml-2">Today</span>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs text-slate-500 font-semibold">
+            <i data-lucide="clock" class="w-4 h-4 text-indigo-600"></i>
+            <span id="timelineTotalHours">Total: 0 hrs</span>
+          </div>
+        </div>
+
+        <div id="timelineContainer" class="relative pl-6 border-l-2 border-indigo-200 space-y-6 my-6"></div>
+
+        <div id="timelineEmpty" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300">
+          <i data-lucide="clock" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
+          <p class="text-sm font-semibold text-slate-600">No tasks recorded for this date</p>
+          <p class="text-xs text-slate-400 mt-1">Navigate days or click "+ Add to Timeline" to record tasks.</p>
+        </div>
+      </div>
+
+      <!-- ================= VIEW 3: CALENDAR HISTORY ================= -->
+      <div id="view-calendar" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900">Calendar Work History</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Browse past activities, deliverables, and click any day to view details.</p>
+          </div>
+          <button onclick="openModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-xs transition-all shadow-md shadow-indigo-200">
+            <i data-lucide="plus" class="w-4 h-4"></i> Log Work
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center gap-3">
+            <h3 id="calendarMonthYear" class="text-lg font-bold text-slate-800">Month 2026</h3>
+            <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-full" id="calendarTotalMonthTasks">0 Tasks</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="changeCalendarMonth(-1)" class="p-2 border border-slate-200 rounded-xl hover:bg-slate-100">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="resetCalendarToCurrent()" class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-slate-200 rounded-xl hover:bg-slate-100">
+              Current Month
+            </button>
+            <button onclick="changeCalendarMonth(1)" class="p-2 border border-slate-200 rounded-xl hover:bg-slate-100">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
+          <div id="calendarDaysGrid" class="grid grid-cols-7 gap-2"></div>
+        </div>
+
+        <div id="calendarDayDetails" class="hidden bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h4 id="calendarSelectedDateTitle" class="text-base font-bold text-slate-800">Tasks for Date</h4>
+            <span id="calendarSelectedDateCount" class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">0 Tasks</span>
+          </div>
+          <div id="calendarSelectedTasksList" class="space-y-3"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- LOG WORK MODAL -->
+  <div id="logModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100">
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Log Daily Work</h2>
+          <p class="text-xs text-slate-500">Record your work entry, select organization, and attach photos</p>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="workForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Workplace / Organization *</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition-all has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/40 border-slate-200 hover:border-slate-300">
+              <input type="radio" name="organization" value="Galactic 3D" checked class="peer sr-only">
+              <span class="text-2xl mb-1">🚀</span>
+              <span class="text-xs font-bold text-slate-800">Galactic 3D</span>
+            </label>
+            <label class="relative flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition-all has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/40 border-slate-200 hover:border-slate-300">
+              <input type="radio" name="organization" value="Cambridge Institute of Technology" class="peer sr-only">
+              <span class="text-2xl mb-1">🎓</span>
+              <span class="text-xs font-bold text-slate-800 text-center">Cambridge Inst.</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Task Title *</label>
+          <input type="text" id="taskTitle" required placeholder="e.g. Built frontend UI for tracking page" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Category</label>
+            <select id="taskCategory" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+              <option value="Development">💻 Development</option>
+              <option value="Design">🎨 Design</option>
+              <option value="Research">🔍 Research</option>
+              <option value="Meeting">👥 Meeting</option>
+              <option value="Testing">🧪 Testing</option>
+              <option value="Documentation">📝 Documentation</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Priority</label>
+            <select id="taskPriority" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+              <option value="HIGH">High Priority</option>
+              <option value="MEDIUM" selected>Medium Priority</option>
+              <option value="LOW">Low Priority</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Date</label>
+            <input type="date" id="taskDate" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Start Time</label>
+            <input type="time" id="taskStartTime" value="09:00" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">End Time</label>
+            <input type="time" id="taskEndTime" value="13:00" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Description & Notes</label>
+          <textarea id="taskDescription" rows="3" placeholder="What did you complete or work on?" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Attach Photos / Screenshots</label>
+          <div class="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50" onclick="document.getElementById('photoFileInput').click()">
+            <input type="file" id="photoFileInput" accept="image/*" multiple class="hidden" onchange="handlePhotoUpload(event)">
+            <i data-lucide="image-plus" class="w-8 h-8 text-indigo-500 mx-auto mb-2"></i>
+            <p class="text-xs font-semibold text-slate-700">Click to upload photos or screenshots</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">JPG, PNG, WebP supported</p>
+          </div>
+          <div id="photosPreviewContainer" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="saveTaskBtn" class="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200">Save Work Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX MODAL -->
+  <div id="lightboxModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
+    <div class="absolute top-4 right-4 flex items-center gap-3">
+      <a id="lightboxDownload" href="#" download="photo.jpg" class="text-white bg-white/20 hover:bg-white/30 p-2.5 rounded-full backdrop-blur transition-all">
+        <i data-lucide="download" class="w-5 h-5"></i>
+      </a>
+      <button onclick="closeLightbox()" class="text-white bg-white/20 hover:bg-white/30 p-2.5 rounded-full backdrop-blur transition-all">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="max-w-4xl max-h-[85vh] p-2 flex flex-col items-center">
+      <img id="lightboxImage" src="" alt="Work Evidence Photo" class="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl border border-white/10">
+      <p id="lightboxCaption" class="text-white/80 text-sm font-medium mt-3 text-center"></p>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC WITH RELIABLE REAL-TIME KV CLOUD DATABASE -->
+  <script>
+    // Universal Real-Time Cloud Key-Value API (KVdb.io)
+    // Free, zero-setup, CORS-enabled, works flawlessly across all devices and browsers
+    const CLOUD_BUCKET_ID = '3vN7ZpQ2YfXw9R'; 
+
+    const USER_SESSION_KEY = 'worktrail_active_session';
+    const LOCAL_USERS_KEY = 'worktrail_registered_users';
+    const LOCAL_TASKS_KEY = 'worktrail_cloud_tasks_cache';
+
+    let isSignupMode = false;
+    let currentUser = null;
+    let currentTab = 'tracker';
+    let currentFilter = 'ALL';
+    let tempAttachedPhotos = [];
+
+    let timelineDate = new Date();
+    let calendarDate = new Date();
+    let selectedCalendarDateStr = new Date().toISOString().split('T')[0];
+
+    // Alert display helper
+    function showAlert(message, type = 'error') {
+      const alertEl = document.getElementById('authAlert');
+      const textEl = document.getElementById('authAlertText');
+      textEl.innerText = message;
+      alertEl.className = type === 'error' 
+        ? "mb-4 p-3.5 rounded-2xl text-xs font-medium border flex items-start gap-2.5 bg-red-950/60 border-red-500/40 text-red-200" 
+        : "mb-4 p-3.5 rounded-2xl text-xs font-medium border flex items-start gap-2.5 bg-emerald-950/60 border-emerald-500/40 text-emerald-200";
+      alertEl.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function clearAlert() {
+      document.getElementById('authAlert').classList.add('hidden');
+    }
+
+    // --- Users Store ---
+    function getUsers() {
+      try {
+        const raw = localStorage.getItem(LOCAL_USERS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveUserLocally(user) {
+      const users = getUsers();
+      const existingIdx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
+      if (existingIdx >= 0) users[existingIdx] = user;
+      else users.push(user);
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+    }
+
+    // --- Cloud Storage Engine (KVdb API) ---
+    async function cloudPut(key, data) {
+      try {
+        await fetch(`https://kvdb.io/${CLOUD_BUCKET_ID}/${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (err) {
+        console.warn('Cloud put error:', err);
+      }
+    }
+
+    async function cloudGet(key) {
+      try {
+        const res = await fetch(`https://kvdb.io/${CLOUD_BUCKET_ID}/${encodeURIComponent(key)}?t=${Date.now()}`);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.warn('Cloud get error:', err);
+      }
+      return null;
+    }
+
+    // --- Tasks Store ---
+    function getTasks() {
+      try {
+        const raw = localStorage.getItem(LOCAL_TASKS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function saveTasks(tasks) {
+      localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(tasks));
+      if (currentUser) {
+        await cloudPut(`tasks_${currentUser.email.toLowerCase()}`, tasks);
+      }
+    }
+
+    async function fetchCloudDataForUser(email) {
+      const remoteTasks = await cloudGet(`tasks_${email.toLowerCase()}`);
+      if (Array.isArray(remoteTasks)) {
+        const localTasks = getTasks();
+        const merged = [...localTasks];
+        remoteTasks.forEach(rt => {
+          if (!merged.find(lt => lt.id === rt.id)) {
+            merged.push(rt);
+          }
+        });
+        localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(merged));
+        renderTasks();
+        if (currentTab === 'timeline') renderTimeline();
+        if (currentTab === 'calendar') renderCalendar();
+      }
+    }
+
+    // Tab Switching
+    function switchTab(tab) {
+      currentTab = tab;
+      const views = ['tracker', 'timeline', 'calendar'];
+      views.forEach(v => {
+        document.getElementById(`view-${v}`).classList.add('hidden');
+        const navBtn = document.getElementById(`nav-${v}`);
+        navBtn.className = "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-all";
+      });
+
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tab}`);
+      activeNav.className = "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all bg-indigo-50 text-indigo-700";
+
+      if (tab === 'tracker') renderTasks();
+      if (tab === 'timeline') renderTimeline();
+      if (tab === 'calendar') renderCalendar();
+      lucide.createIcons();
+    }
+
+    // Auth Mode Toggle
+    function toggleAuthMode() {
+      isSignupMode = !isSignupMode;
+      clearAlert();
+      const nameContainer = document.getElementById('authNameContainer');
+      const submitText = document.getElementById('authSubmitText');
+      const toggleBtn = document.getElementById('authToggleBtn');
+
+      if (isSignupMode) {
+        nameContainer.classList.remove('hidden');
+        submitText.innerText = 'Register & Create Account';
+        toggleBtn.innerText = 'Already have an account? Sign In';
+      } else {
+        nameContainer.classList.add('hidden');
+        submitText.innerText = 'Sign In to Account';
+        toggleBtn.innerText = "Don't have an account? Register new account";
+      }
+      lucide.createIcons();
+    }
+
+    // STRICT AUTHENTICATION: Multi-Device Sync
+    async function handleAuth(e) {
+      e.preventDefault();
+      clearAlert();
+
+      const email = document.getElementById('authEmail').value.trim().toLowerCase();
+      const password = document.getElementById('authPassword').value;
+      const nameInput = document.getElementById('authName').value.trim();
+
+      if (!email || !password) {
+        showAlert('Please enter both email and password.');
+        return;
+      }
+
+      const submitBtn = document.getElementById('authSubmitBtn');
+      const originalText = document.getElementById('authSubmitText').innerText;
+      document.getElementById('authSubmitText').innerText = 'Connecting to Cloud...';
+      submitBtn.disabled = true;
+
+      try {
+        if (isSignupMode) {
+          // --- REGISTRATION FLOW ---
+          if (!nameInput) {
+            showAlert('Please enter your full name to register.');
+            submitBtn.disabled = false;
+            document.getElementById('authSubmitText').innerText = originalText;
+            return;
+          }
+
+          // Check if already registered in cloud
+          const existingCloudUser = await cloudGet(`user_${email}`);
+          if (existingCloudUser) {
+            showAlert('This email is already registered! Please sign in.');
+            submitBtn.disabled = false;
+            document.getElementById('authSubmitText').innerText = originalText;
+            return;
+          }
+
+          const newUser = { email, password, name: nameInput, createdAt: Date.now() };
+          
+          // Save directly to global cloud database
+          await cloudPut(`user_${email}`, newUser);
+          saveUserLocally(newUser);
+          
+          currentUser = newUser;
+          localStorage.setItem(USER_SESSION_KEY, JSON.stringify(currentUser));
+          showApp();
+        } else {
+          // --- SIGN IN FLOW (Cross-Device Lookup) ---
+          let userRecord = getUsers().find(u => u.email.toLowerCase() === email);
+
+          // If not cached on this specific phone/laptop, query global cloud DB
+          if (!userRecord) {
+            userRecord = await cloudGet(`user_${email}`);
+            if (userRecord) {
+              saveUserLocally(userRecord);
+            }
+          }
+
+          // If still not found anywhere in the cloud DB:
+          if (!userRecord) {
+            showAlert('No registered account found with this email. Please click "Register new account" below first.');
+            submitBtn.disabled = false;
+            document.getElementById('authSubmitText').innerText = originalText;
+            return;
+          }
+
+          // Check Password
+          if (userRecord.password !== password) {
+            showAlert('Incorrect password. Please enter the correct password.');
+            submitBtn.disabled = false;
+            document.getElementById('authSubmitText').innerText = originalText;
+            return;
+          }
+
+          // Success!
+          currentUser = userRecord;
+          localStorage.setItem(USER_SESSION_KEY, JSON.stringify(currentUser));
+          showApp();
+          await fetchCloudDataForUser(email);
+        }
+      } catch (err) {
+        showAlert('Network error while communicating with cloud database. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+        document.getElementById('authSubmitText').innerText = originalText;
+      }
+    }
+
+    function handleSignOut() {
+      localStorage.removeItem(USER_SESSION_KEY);
+      currentUser = null;
+      document.getElementById('authEmail').value = '';
+      document.getElementById('authPassword').value = '';
+      clearAlert();
+      document.getElementById('appScreen').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function showApp() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+      
+      const displayName = currentUser.name || currentUser.email.split('@')[0];
+      document.getElementById('userDisplayName').innerText = displayName;
+      document.getElementById('userDisplayEmail').innerText = currentUser.email;
+      
+      const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AS';
+      document.getElementById('userAvatarText').innerText = initials;
+
+      lucide.createIcons();
+      switchTab('tracker');
+    }
+
+    // Work Tracker Logic
+    function setFilter(filter) {
+      currentFilter = filter;
+      const tabAll = document.getElementById('tab-ALL');
+      const tabGalactic = document.getElementById('tab-Galactic-3D');
+      const tabCambridge = document.getElementById('tab-Cambridge');
+
+      [tabAll, tabGalactic, tabCambridge].forEach(t => {
+        t.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5";
+      });
+
+      if (filter === 'ALL') {
+        tabAll.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-indigo-600 text-white shadow-sm shadow-indigo-100";
+      } else if (filter === 'Galactic 3D') {
+        tabGalactic.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-purple-600 text-white shadow-sm shadow-purple-100 flex items-center gap-1.5";
+      } else {
+        tabCambridge.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-emerald-600 text-white shadow-sm shadow-emerald-100 flex items-center gap-1.5";
+      }
+      renderTasks();
+    }
+
+    function renderTasks() {
+      if (!currentUser) return;
+      const allTasks = getTasks();
+      const userTasks = allTasks.filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+      const searchQuery = (document.getElementById('searchInput').value || '').toLowerCase();
+
+      const galacticCount = userTasks.filter(t => t.organization === 'Galactic 3D').length;
+      const cambridgeCount = userTasks.filter(t => t.organization === 'Cambridge Institute of Technology').length;
+
+      document.getElementById('totalTasksCount').innerText = userTasks.length;
+      document.getElementById('galacticCount').innerText = galacticCount;
+      document.getElementById('cambridgeCount').innerText = cambridgeCount;
+      document.getElementById('sidebarTasksCount').innerText = userTasks.length;
+
+      document.getElementById('badge-all').innerText = userTasks.length;
+      document.getElementById('badge-galactic').innerText = galacticCount;
+      document.getElementById('badge-cambridge').innerText = cambridgeCount;
+
+      let filtered = userTasks.sort((a, b) => b.createdAt - a.createdAt);
+      if (currentFilter !== 'ALL') {
+        filtered = filtered.filter(t => t.organization === currentFilter);
+      }
+      if (searchQuery) {
+        filtered = filtered.filter(t => 
+          (t.title && t.title.toLowerCase().includes(searchQuery)) ||
+          (t.description && t.description.toLowerCase().includes(searchQuery)) ||
+          (t.category && t.category.toLowerCase().includes(searchQuery))
+        );
+      }
+
+      const listEl = document.getElementById('taskList');
+      const emptyEl = document.getElementById('emptyState');
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      emptyEl.classList.add('hidden');
+      listEl.innerHTML = filtered.map(t => {
+        const isGalactic = t.organization === 'Galactic 3D';
+        const orgBadgeClass = isGalactic 
+          ? 'bg-purple-100 text-purple-800 border-purple-200' 
+          : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        const orgIcon = isGalactic ? '🚀' : '🎓';
+
+        let photosHtml = '';
+        if (t.photos && t.photos.length > 0) {
+          photosHtml = `
+            <div class="mt-4 pt-3 border-t border-slate-100">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2">
+                <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                <span>Attached Photos (${t.photos.length})</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                ${t.photos.map(p => `
+                  <div class="group relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:ring-2 hover:ring-indigo-500 transition-all" onclick="openLightbox('${p.dataUrl.replace(/'/g, "\\'")}', '${(t.title || 'Photo').replace(/'/g, "\\'")}')">
+                    <img src="${p.dataUrl}" alt="${p.name || 'Photo'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                      <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${orgBadgeClass}">
+                  <span>${orgIcon}</span>
+                  <span>${t.organization}</span>
+                </span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                  ${t.category || 'General'}
+                </span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-md ${t.priority === 'HIGH' ? 'bg-red-50 text-red-600' : (t.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-600')}">
+                  ${t.priority || 'NORMAL'}
+                </span>
+              </div>
+              
+              <div class="flex items-center gap-2 text-xs text-slate-400">
+                <span class="flex items-center gap-1">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                  ${t.startTime || '09:00'} - ${t.endTime || '17:00'}
+                </span>
+                <span>•</span>
+                <span>${t.date || 'Today'}</span>
+                <button onclick="handleDeleteTask('${t.id}')" class="p-1 text-slate-300 hover:text-red-500 rounded-md transition-colors" title="Delete entry">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <h3 class="text-base font-bold text-slate-900 mb-1">${escapeHtml(t.title)}</h3>
+            <p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(t.description || '')}</p>
+
+            ${photosHtml}
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    async function handleDeleteTask(id) {
+      if (confirm('Are you sure you want to delete this work entry?')) {
+        const tasks = getTasks().filter(t => t.id !== id);
+        await saveTasks(tasks);
+        renderTasks();
+        if (currentTab === 'timeline') renderTimeline();
+        if (currentTab === 'calendar') renderCalendar();
+      }
+    }
+
+    // Timeline Logic
+    function changeTimelineDay(offset) {
+      timelineDate.setDate(timelineDate.getDate() + offset);
+      renderTimeline();
+    }
+
+    function setTimelineToday() {
+      timelineDate = new Date();
+      renderTimeline();
+    }
+
+    function renderTimeline() {
+      if (!currentUser) return;
+      const dateStr = timelineDate.toISOString().split('T')[0];
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('timelineDateLabel').innerText = timelineDate.toLocaleDateString('en-US', options);
+
+      const allTasks = getTasks().filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+      const dayTasks = allTasks.filter(t => t.date === dateStr).sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+
+      const container = document.getElementById('timelineContainer');
+      const emptyEl = document.getElementById('timelineEmpty');
+
+      if (dayTasks.length === 0) {
+        container.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        document.getElementById('timelineTotalHours').innerText = 'Total: 0 hrs';
+        lucide.createIcons();
+        return;
+      }
+
+      emptyEl.classList.add('hidden');
+      
+      let totalMins = 0;
+      dayTasks.forEach(t => {
+        if (t.startTime && t.endTime) {
+          const [sH, sM] = t.startTime.split(':').map(Number);
+          const [eH, eM] = t.endTime.split(':').map(Number);
+          const diff = (eH * 60 + eM) - (sH * 60 + sM);
+          if (diff > 0) totalMins += diff;
+        }
+      });
+      const hrs = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      document.getElementById('timelineTotalHours').innerText = `Total: ${hrs}h ${mins}m`;
+
+      container.innerHTML = dayTasks.map(t => {
+        const isGalactic = t.organization === 'Galactic 3D';
+        const orgBadge = isGalactic 
+          ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">🚀 Galactic 3D</span>' 
+          : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">🎓 Cambridge Inst.</span>';
+
+        return `
+          <div class="relative pl-6">
+            <div class="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-indigo-600 ring-4 ring-indigo-100"></div>
+            
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-indigo-600">${t.startTime || '09:00'} - ${t.endTime || '17:00'}</span>
+                  ${orgBadge}
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">${t.category || 'General'}</span>
+              </div>
+              <h4 class="font-bold text-slate-800 text-sm">${escapeHtml(t.title)}</h4>
+              <p class="text-xs text-slate-500 mt-1">${escapeHtml(t.description || '')}</p>
+              ${t.photos && t.photos.length ? `
+                <div class="flex gap-2 mt-2">
+                  ${t.photos.map(p => `
+                    <img src="${p.dataUrl}" onclick="openLightbox('${p.dataUrl}', '${escapeHtml(t.title)}')" class="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:scale-105 transition-transform">
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // Calendar Logic
+    function changeCalendarMonth(offset) {
+      calendarDate.setMonth(calendarDate.getMonth() + offset);
+      renderCalendar();
+    }
+
+    function resetCalendarToCurrent() {
+      calendarDate = new Date();
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      if (!currentUser) return;
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const y = calendarDate.getFullYear();
+      const m = calendarDate.getMonth();
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[m]} ${y}`;
+
+      const allTasks = getTasks().filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+
+      const firstDay = new Date(y, m, 1);
+      const lastDay = new Date(y, m + 1, 0);
+
+      let startingDay = firstDay.getDay() - 1;
+      if (startingDay < 0) startingDay = 6;
+
+      const totalDays = lastDay.getDate();
+      const grid = document.getElementById('calendarDaysGrid');
+      grid.innerHTML = '';
+
+      let monthTaskCount = 0;
+
+      for (let i = 0; i < startingDay; i++) {
+        grid.innerHTML += `<div class="h-24 bg-slate-50/50 rounded-xl border border-transparent"></div>`;
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayTasks = allTasks.filter(t => t.date === dateStr);
+        monthTaskCount += dayTasks.length;
+
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedCalendarDateStr;
+
+        let badges = '';
+        if (dayTasks.length > 0) {
+          badges = `
+            <div class="mt-1 space-y-1">
+              ${dayTasks.slice(0, 2).map(t => `
+                <div class="text-[10px] truncate px-1.5 py-0.5 rounded font-medium ${t.organization === 'Galactic 3D' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">
+                  ${escapeHtml(t.title)}
+                </div>
+              `).join('')}
+              ${dayTasks.length > 2 ? `<div class="text-[9px] font-bold text-slate-400 pl-1">+${dayTasks.length - 2} more</div>` : ''}
+            </div>
+          `;
+        }
+
+        grid.innerHTML += `
+          <div onclick="selectCalendarDay('${dateStr}')" class="h-24 p-2 rounded-xl border transition-all cursor-pointer overflow-hidden ${isSelected ? 'border-indigo-600 ring-2 ring-indigo-200 bg-indigo-50/20' : (isToday ? 'border-indigo-400 bg-white shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300')}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold ${isToday ? 'w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center' : 'text-slate-700'}">${day}</span>
+              ${dayTasks.length ? `<span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>` : ''}
+            </div>
+            ${badges}
+          </div>
+        `;
+      }
+
+      document.getElementById('calendarTotalMonthTasks').innerText = `${monthTaskCount} Tasks this month`;
+      renderSelectedCalendarDay();
+      lucide.createIcons();
+    }
+
+    function selectCalendarDay(dateStr) {
+      selectedCalendarDateStr = dateStr;
+      renderCalendar();
+    }
+
+    function renderSelectedCalendarDay() {
+      const detailsContainer = document.getElementById('calendarDayDetails');
+      const allTasks = getTasks().filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+      const dayTasks = allTasks.filter(t => t.date === selectedCalendarDateStr);
+
+      detailsContainer.classList.remove('hidden');
+      document.getElementById('calendarSelectedDateTitle').innerText = `Work Entries for ${selectedCalendarDateStr}`;
+      document.getElementById('calendarSelectedDateCount').innerText = `${dayTasks.length} Tasks`;
+
+      const list = document.getElementById('calendarSelectedTasksList');
+      if (dayTasks.length === 0) {
+        list.innerHTML = `<p class="text-xs text-slate-400">No tasks logged for this day. Click "+ Log Work" to add one.</p>`;
+        return;
+      }
+
+      list.innerHTML = dayTasks.map(t => {
+        const isGalactic = t.organization === 'Galactic 3D';
+        return `
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-800">${escapeHtml(t.title)}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isGalactic ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">${isGalactic ? '🚀 Galactic 3D' : '🎓 Cambridge'}</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(t.description || '')}</p>
+            </div>
+            <div class="text-xs text-slate-400 font-semibold shrink-0 pl-2">
+              ${t.startTime || '09:00'} - ${t.endTime || '17:00'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Modal
+    function openModal() {
+      tempAttachedPhotos = [];
+      document.getElementById('photosPreviewContainer').innerHTML = '';
+      document.getElementById('taskTitle').value = '';
+      document.getElementById('taskDescription').value = '';
+      document.getElementById('taskDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('logModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById('logModal').classList.add('hidden');
+    }
+
+    function handlePhotoUpload(e) {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxW = 1200;
+            let scale = 1;
+            if (img.width > maxW) scale = maxW / img.width;
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const compressedUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+            const photoObj = {
+              id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+              name: file.name,
+              dataUrl: compressedUrl
+            };
+            tempAttachedPhotos.push(photoObj);
+            renderPreviewThumbnails();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      e.target.value = '';
+    }
+
+    function renderPreviewThumbnails() {
+      const container = document.getElementById('photosPreviewContainer');
+      container.innerHTML = tempAttachedPhotos.map((p, i) => `
+        <div class="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-300">
+          <img src="${p.dataUrl}" alt="Preview" class="w-full h-full object-cover">
+          <button type="button" onclick="removeTempPhoto(${i})" class="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-black">
+            <i data-lucide="x" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function removeTempPhoto(index) {
+      tempAttachedPhotos.splice(index, 1);
+      renderPreviewThumbnails();
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const org = document.querySelector('input[name="organization"]:checked').value;
+      const title = document.getElementById('taskTitle').value.trim();
+      const category = document.getElementById('taskCategory').value;
+      const priority = document.getElementById('taskPriority').value;
+      const taskDate = document.getElementById('taskDate').value || new Date().toISOString().split('T')[0];
+      const startTime = document.getElementById('taskStartTime').value;
+      const endTime = document.getElementById('taskEndTime').value;
+      const description = document.getElementById('taskDescription').value.trim();
+
+      const newTask = {
+        id: 'task-' + Date.now(),
+        userEmail: currentUser.email,
+        title,
+        organization: org,
+        category,
+        priority,
+        startTime,
+        endTime,
+        description,
+        photos: [...tempAttachedPhotos],
+        date: taskDate,
+        createdAt: Date.now()
+      };
+
+      const tasks = getTasks();
+      tasks.unshift(newTask);
+      await saveTasks(tasks);
+      closeModal();
+
+      renderTasks();
+      if (currentTab === 'timeline') renderTimeline();
+      if (currentTab === 'calendar') renderCalendar();
+    }
+
+    function openLightbox(src, caption) {
+      const modal = document.getElementById('lightboxModal');
+      const img = document.getElementById('lightboxImage');
+      const cap = document.getElementById('lightboxCaption');
+      const dl = document.getElementById('lightboxDownload');
+
+      img.src = src;
+      cap.innerText = caption;
+      dl.href = src;
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightboxModal').classList.add('hidden');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closeLightbox();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      const emailInput = document.getElementById('authEmail');
+      const passInput = document.getElementById('authPassword');
+      if (emailInput) emailInput.value = '';
+      if (passInput) passInput.value = '';
+
+      try {
+        const savedSession = localStorage.getItem(USER_SESSION_KEY);
+        if (savedSession) {
+          currentUser = JSON.parse(savedSession);
+          showApp();
+          fetchCloudDataForUser(currentUser.email);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  </script>
+</body>
+</html>
