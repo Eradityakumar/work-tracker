@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Clock,
   FolderLock,
-  TrendingUp,
   Sparkles,
   ArrowUpRight,
   Calendar,
@@ -141,25 +140,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Weekly Productivity Score */}
-        <Card className="hover:border-amber-500/50 transition-colors group">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Weekly Score
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-black tracking-tight text-foreground">
-              {loading ? "..." : `${metrics.weeklyProductivityScore}%`}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-              <span className="text-emerald-500 font-semibold">Exceeding benchmark</span>
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Grid: Recent Activities & Upcoming Tasks */}
