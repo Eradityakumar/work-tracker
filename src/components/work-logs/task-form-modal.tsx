@@ -15,6 +15,8 @@ import {
   Clock,
   Tag,
   AlertCircle,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +53,72 @@ export function TaskFormModal({
   const [attachments, setAttachments] = React.useState<any[]>([]);
   const [isUploading, setIsUploading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Speech-to-text state
+  const [isListeningTitle, setIsListeningTitle] = React.useState(false);
+  const [isListeningDesc, setIsListeningDesc] = React.useState(false);
+  const recognitionRef = React.useRef<any>(null);
+
+  const startVoiceInput = (field: "title" | "description") => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    if (field === "title") setIsListeningTitle(true);
+    if (field === "description") setIsListeningDesc(true);
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0].transcript)
+        .join("");
+
+      if (field === "title") {
+        setTitle(transcript);
+      } else {
+        setDescription(transcript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech error:", event);
+      if (event.error !== "no-speech") {
+        toast.error(`Voice error: ${event.error}`);
+      }
+      setIsListeningTitle(false);
+      setIsListeningDesc(false);
+    };
+
+    recognition.onend = () => {
+      setIsListeningTitle(false);
+      setIsListeningDesc(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    toast.info("Listening... Speak now", { duration: 2500 });
+  };
+
+  const stopVoiceInput = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListeningTitle(false);
+    setIsListeningDesc(false);
+  };
 
   React.useEffect(() => {
     if (initialTask) {
@@ -227,9 +295,24 @@ export function TaskFormModal({
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            Task Title *
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Task Title *
+            </label>
+            <button
+              type="button"
+              onClick={() => isListeningTitle ? stopVoiceInput() : startVoiceInput("title")}
+              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                isListeningTitle
+                  ? "bg-red-500 text-white animate-pulse shadow-sm"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title="Click to speak task title"
+            >
+              {isListeningTitle ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+              <span>{isListeningTitle ? "Listening..." : "Speak Title"}</span>
+            </button>
+          </div>
           <input
             type="text"
             required
@@ -242,14 +325,29 @@ export function TaskFormModal({
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            Detailed Description
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Detailed Description
+            </label>
+            <button
+              type="button"
+              onClick={() => isListeningDesc ? stopVoiceInput() : startVoiceInput("description")}
+              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                isListeningDesc
+                  ? "bg-red-500 text-white animate-pulse shadow-sm"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title="Click to speak description"
+            >
+              {isListeningDesc ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+              <span>{isListeningDesc ? "Listening..." : "Speak to Write"}</span>
+            </button>
+          </div>
           <textarea
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What exact deliverables or milestones were worked on?"
+            placeholder="What exact deliverables or milestones were worked on? (Or click Speak to Write above)"
             className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
         </div>
