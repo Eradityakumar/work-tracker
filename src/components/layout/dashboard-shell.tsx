@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
+import { BottomNav } from "@/components/layout/bottom-nav";
 import { TaskFormModal } from "@/components/work-logs/task-form-modal";
 import { ReportGeneratorModal } from "@/components/reports/report-generator-modal";
 import { SearchModal } from "@/components/search/search-modal";
@@ -154,10 +155,16 @@ export function DashboardShell({ children }: DashboardShellProps) {
             onOpenSearch={() => setIsSearchModalOpen(true)}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 pb-24 md:pb-8">
             {children}
           </main>
         </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <BottomNav
+          onOpenQuickTask={() => openTaskModal()}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+        />
 
         {/* Modals */}
         <TaskFormModal

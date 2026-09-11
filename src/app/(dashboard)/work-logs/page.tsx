@@ -153,10 +153,10 @@ export default function WorkLogsPage() {
       </div>
 
       {/* Organization Switcher Tabs */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-muted/40 rounded-xl border border-border">
+      <div className="flex items-center gap-2 p-1.5 bg-muted/40 rounded-xl border border-border overflow-x-auto no-scrollbar scroll-smooth">
         <button
           onClick={() => setOrganization("ALL")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${
             organization === "ALL"
               ? "bg-background text-foreground shadow-sm border border-border"
               : "text-muted-foreground hover:text-foreground"
@@ -170,7 +170,7 @@ export default function WorkLogsPage() {
 
         <button
           onClick={() => setOrganization("Galactic 3D")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${
             organization === "Galactic 3D"
               ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-sm"
               : "text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/5"
@@ -186,7 +186,7 @@ export default function WorkLogsPage() {
 
         <button
           onClick={() => setOrganization("Cambridge Institute of Technology")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+          className={`shrink-0 flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all ${
             organization === "Cambridge Institute of Technology"
               ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm"
               : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/5"

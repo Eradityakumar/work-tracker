@@ -309,21 +309,21 @@ export function TaskFormModal({
 
         {/* Title */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Task Title *
             </label>
             <button
               type="button"
               onClick={() => isListeningTitle ? stopVoiceInput() : startVoiceInput("title")}
-              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+              className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
                 isListeningTitle
-                  ? "bg-red-500 text-white animate-pulse shadow-sm"
+                  ? "bg-red-500 text-white animate-pulse shadow-md"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
               }`}
               title="Click to speak task title"
             >
-              {isListeningTitle ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+              {isListeningTitle ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
               <span>{isListeningTitle ? "Listening..." : "Speak Title"}</span>
             </button>
           </div>
@@ -333,36 +333,36 @@ export function TaskFormModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. 3D Model Optimization / Class Module Design"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
         {/* Description */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Detailed Description
             </label>
             <button
               type="button"
               onClick={() => isListeningDesc ? stopVoiceInput() : startVoiceInput("description")}
-              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+              className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
                 isListeningDesc
-                  ? "bg-red-500 text-white animate-pulse shadow-sm"
+                  ? "bg-red-500 text-white animate-pulse shadow-md"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
               }`}
               title="Click to speak description"
             >
-              {isListeningDesc ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-              <span>{isListeningDesc ? "Listening..." : "Speak to Write"}</span>
+              {isListeningDesc ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              <span>{isListeningDesc ? "Listening..." : "Speak Description"}</span>
             </button>
           </div>
           <textarea
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What exact deliverables or milestones were worked on? (Or click Speak to Write above)"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            placeholder="What exact deliverables or milestones were worked on? (Or click Speak Description)"
+            className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
         </div>
 
@@ -474,21 +474,21 @@ export function TaskFormModal({
         {/* Notes & Learnings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Notes / Blockers
               </label>
               <button
                 type="button"
                 onClick={() => isListeningNotes ? stopVoiceInput() : startVoiceInput("notes")}
-                className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
                   isListeningNotes
-                    ? "bg-red-500 text-white animate-pulse shadow-sm"
+                    ? "bg-red-500 text-white animate-pulse shadow-md"
                     : "bg-primary/10 text-primary hover:bg-primary/20"
                 }`}
                 title="Click to speak notes"
               >
-                {isListeningNotes ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                {isListeningNotes ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                 <span>{isListeningNotes ? "Listening..." : "Speak Notes"}</span>
               </button>
             </div>
@@ -497,26 +497,26 @@ export function TaskFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Technical notes, blockers, or context..."
-              className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background resize-none"
+              className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-border bg-background resize-none"
             />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Learnings & Insights
               </label>
               <button
                 type="button"
                 onClick={() => isListeningLearnings ? stopVoiceInput() : startVoiceInput("learnings")}
-                className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
                   isListeningLearnings
-                    ? "bg-red-500 text-white animate-pulse shadow-sm"
+                    ? "bg-red-500 text-white animate-pulse shadow-md"
                     : "bg-primary/10 text-primary hover:bg-primary/20"
                 }`}
                 title="Click to speak learnings & insights"
               >
-                {isListeningLearnings ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                {isListeningLearnings ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                 <span>{isListeningLearnings ? "Listening..." : "Speak Insights"}</span>
               </button>
             </div>
@@ -525,7 +525,7 @@ export function TaskFormModal({
               value={learnings}
               onChange={(e) => setLearnings(e.target.value)}
               placeholder="Key technical takeaway or new domain learning..."
-              className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background resize-none"
+              className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-border bg-background resize-none"
             />
           </div>
         </div>
@@ -541,7 +541,7 @@ export function TaskFormModal({
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="frontend, auth, redis, pull-request"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background"
+            className="w-full px-3 py-2 text-base sm:text-xs rounded-lg border border-border bg-background"
           />
         </div>
 
@@ -639,11 +639,22 @@ export function TaskFormModal({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="flex-1 sm:flex-none h-11 sm:h-9 text-xs font-semibold"
+          >
             Cancel
           </Button>
-          <Button type="submit" size="sm" disabled={isSubmitting || isUploading}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isSubmitting || isUploading}
+            className="flex-1 sm:flex-none h-11 sm:h-9 text-xs font-bold shadow-md shadow-primary/20"
+          >
             {isSubmitting ? "Saving..." : initialTask ? "Update Entry" : "Save Work Entry"}
           </Button>
         </div>
