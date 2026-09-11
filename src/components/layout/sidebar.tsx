@@ -45,7 +45,7 @@ export function Sidebar({ user, onOpenQuickTask, onLogout }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 border-r border-border bg-card/60 backdrop-blur-md flex flex-col h-screen sticky top-0">
+    <aside className="w-full md:w-64 flex-shrink-0 border-r border-border bg-card/60 backdrop-blur-md flex flex-col h-full md:h-screen md:sticky md:top-0">
       {/* Brand Header */}
       <div className="p-5 border-b border-border flex items-center justify-between">
         <Link href="/work-logs" className="flex items-center gap-2.5 group">
@@ -123,30 +123,30 @@ export function Sidebar({ user, onOpenQuickTask, onLogout }: SidebarProps) {
         </div>
       </div>
 
-      {/* User Profile Footer */}
-      <div className="p-3 border-t border-border bg-muted/20">
-        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card/60 border border-border/60">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-primary to-indigo-500 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : "WT"}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-semibold text-foreground truncate">
-                {user?.name || "Employee"}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate">
-                {user?.designation || user?.department || "Team Member"}
-              </p>
-            </div>
+      {/* User Profile & Logout Footer */}
+      <div className="p-3 border-t border-border bg-muted/20 space-y-2 mt-auto">
+        <div className="flex items-center gap-2.5 p-2 rounded-lg bg-card/60 border border-border/60 overflow-hidden">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-primary to-indigo-500 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
+            {user?.name ? user.name.slice(0, 2).toUpperCase() : "WT"}
           </div>
-          <button
-            onClick={onLogout}
-            title="Log Out"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="overflow-hidden flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">
+              {user?.name || "Employee"}
+            </p>
+            <p className="text-[10px] text-muted-foreground truncate">
+              {user?.email || user?.designation || "Team Member"}
+            </p>
+          </div>
         </div>
+
+        {/* Prominent, full-width Logout button */}
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all active:scale-95 shadow-xs"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out / Log Out</span>
+        </button>
       </div>
     </aside>
   );

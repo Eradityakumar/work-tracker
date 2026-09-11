@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Sun, Moon, Search, Sparkles, Menu, Bell, User as UserIcon } from "lucide-react";
+import { Sun, Moon, Search, Sparkles, Menu, Bell, User as UserIcon, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenSearch: () => void;
   onOpenMobileMenu?: () => void;
   onGenerateReport?: () => void;
+  onLogout?: () => void;
 }
 
 export function Navbar({
@@ -17,6 +18,7 @@ export function Navbar({
   onOpenSearch,
   onOpenMobileMenu,
   onGenerateReport,
+  onLogout,
 }: NavbarProps) {
   const { theme, setTheme } = useTheme();
 
@@ -83,10 +85,23 @@ export function Navbar({
         {/* User Name */}
         {user && (
           <div className="flex items-center gap-2 pl-2 border-l border-border">
-            <span className="text-xs font-semibold text-foreground max-w-[100px] sm:max-w-none truncate">
+            <span className="text-xs font-semibold text-foreground max-w-[100px] sm:max-w-none truncate hidden xs:inline sm:inline">
               {user.name}
             </span>
           </div>
+        )}
+
+        {/* Prominent Logout Button for Phone & Desktop */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-all active:scale-95 shadow-xs"
+            title="Log Out of WorkTrail"
+            aria-label="Log Out"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="text-[11px]">Logout</span>
+          </button>
         )}
       </div>
     </header>

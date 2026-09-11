@@ -117,11 +117,12 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <div id="mobileUserAvatar" class="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+        <div id="mobileUserAvatar" class="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
           AS
         </div>
-        <button onclick="handleSignOut()" title="Sign Out" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg active:scale-95">
-          <i data-lucide="log-out" class="w-4 h-4"></i>
+        <button onclick="handleSignOut()" title="Sign Out" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 active:scale-95 transition-all shadow-xs">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Logout</span>
         </button>
       </div>
     </header>
@@ -186,21 +187,21 @@
       </div>
 
       <!-- User Profile & Sign Out Footer -->
-      <div class="p-3 border-t border-slate-100 bg-slate-50/70">
-        <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-          <div class="flex items-center gap-2.5 overflow-hidden">
-            <div id="userAvatarText" class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-              AS
-            </div>
-            <div class="overflow-hidden leading-tight">
-              <p id="userDisplayName" class="text-xs font-bold text-slate-800 truncate">User</p>
-              <p id="userDisplayEmail" class="text-[10px] text-slate-400 truncate">user@email.com</p>
-            </div>
+      <div class="p-3 border-t border-slate-100 bg-slate-50/70 space-y-2 mt-auto">
+        <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 overflow-hidden">
+          <div id="userAvatarText" class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+            AS
           </div>
-          <button onclick="handleSignOut()" title="Sign Out" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 transition-colors">
-            <i data-lucide="log-out" class="w-4 h-4"></i>
-          </button>
+          <div className="overflow-hidden leading-tight flex-1 min-w-0" class="overflow-hidden leading-tight flex-1 min-w-0">
+            <p id="userDisplayName" class="text-xs font-bold text-slate-800 truncate">User</p>
+            <p id="userDisplayEmail" class="text-[10px] text-slate-400 truncate">user@email.com</p>
+          </div>
         </div>
+
+        <button onclick="handleSignOut()" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all active:scale-95 shadow-xs">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Sign Out / Log Out</span>
+        </button>
       </div>
     </aside>
 

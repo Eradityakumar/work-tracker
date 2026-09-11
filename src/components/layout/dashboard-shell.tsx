@@ -125,11 +125,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative z-50 w-64 bg-background h-full shadow-2xl flex flex-col">
-              <div className="p-3 flex justify-end">
+            <div className="relative z-50 w-72 max-w-[85vw] bg-background h-full shadow-2xl flex flex-col justify-between">
+              <div className="p-3.5 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-primary to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    WT
+                  </div>
+                  <span>WorkTrail Menu</span>
+                </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent active:scale-95"
+                  aria-label="Close menu"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -141,7 +148,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     setIsMobileMenuOpen(false);
                     openTaskModal();
                   }}
-                  onLogout={handleLogout}
+                  onLogout={() => {
+                    setIsMobileMenuOpen(false);
+                    handleLogout();
+                  }}
                 />
               </div>
             </div>
@@ -154,6 +164,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             user={user}
             onOpenSearch={() => setIsSearchModalOpen(true)}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+            onLogout={handleLogout}
           />
           <main className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 pb-24 md:pb-8">
             {children}
