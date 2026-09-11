@@ -57,9 +57,11 @@ export function TaskFormModal({
   // Speech-to-text state
   const [isListeningTitle, setIsListeningTitle] = React.useState(false);
   const [isListeningDesc, setIsListeningDesc] = React.useState(false);
+  const [isListeningNotes, setIsListeningNotes] = React.useState(false);
+  const [isListeningLearnings, setIsListeningLearnings] = React.useState(false);
   const recognitionRef = React.useRef<any>(null);
 
-  const startVoiceInput = (field: "title" | "description") => {
+  const startVoiceInput = (field: "title" | "description" | "notes" | "learnings") => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -79,6 +81,8 @@ export function TaskFormModal({
 
     if (field === "title") setIsListeningTitle(true);
     if (field === "description") setIsListeningDesc(true);
+    if (field === "notes") setIsListeningNotes(true);
+    if (field === "learnings") setIsListeningLearnings(true);
 
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
@@ -87,8 +91,12 @@ export function TaskFormModal({
 
       if (field === "title") {
         setTitle(transcript);
-      } else {
+      } else if (field === "description") {
         setDescription(transcript);
+      } else if (field === "notes") {
+        setNotes(transcript);
+      } else if (field === "learnings") {
+        setLearnings(transcript);
       }
     };
 
@@ -99,11 +107,15 @@ export function TaskFormModal({
       }
       setIsListeningTitle(false);
       setIsListeningDesc(false);
+      setIsListeningNotes(false);
+      setIsListeningLearnings(false);
     };
 
     recognition.onend = () => {
       setIsListeningTitle(false);
       setIsListeningDesc(false);
+      setIsListeningNotes(false);
+      setIsListeningLearnings(false);
     };
 
     recognitionRef.current = recognition;
@@ -118,6 +130,8 @@ export function TaskFormModal({
     }
     setIsListeningTitle(false);
     setIsListeningDesc(false);
+    setIsListeningNotes(false);
+    setIsListeningLearnings(false);
   };
 
   React.useEffect(() => {
@@ -460,9 +474,24 @@ export function TaskFormModal({
         {/* Notes & Learnings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Notes / Blockers
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Notes / Blockers
+              </label>
+              <button
+                type="button"
+                onClick={() => isListeningNotes ? stopVoiceInput() : startVoiceInput("notes")}
+                className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                  isListeningNotes
+                    ? "bg-red-500 text-white animate-pulse shadow-sm"
+                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                }`}
+                title="Click to speak notes"
+              >
+                {isListeningNotes ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                <span>{isListeningNotes ? "Listening..." : "Speak Notes"}</span>
+              </button>
+            </div>
             <textarea
               rows={2}
               value={notes}
@@ -473,9 +502,24 @@ export function TaskFormModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Learnings & Insights
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Learnings & Insights
+              </label>
+              <button
+                type="button"
+                onClick={() => isListeningLearnings ? stopVoiceInput() : startVoiceInput("learnings")}
+                className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                  isListeningLearnings
+                    ? "bg-red-500 text-white animate-pulse shadow-sm"
+                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                }`}
+                title="Click to speak learnings & insights"
+              >
+                {isListeningLearnings ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                <span>{isListeningLearnings ? "Listening..." : "Speak Insights"}</span>
+              </button>
+            </div>
             <textarea
               rows={2}
               value={learnings}
