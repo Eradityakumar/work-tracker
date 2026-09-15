@@ -75,9 +75,9 @@ export function TaskFormModal({
     if (data.endTime) setEndTime(data.endTime);
     if (data.priority) setPriority(data.priority);
     if (data.status) setStatus(data.status);
-    if (data.notes) setNotes(data.notes);
-    if (data.learnings) setLearnings(data.learnings);
-    if (data.tags) setTags(data.tags);
+    if (data.notes !== undefined) setNotes(data.notes);
+    if (data.learnings !== undefined) setLearnings(data.learnings);
+    if (data.tags !== undefined) setTags(data.tags);
   };
 
   const processSummaryAutoFill = async (textToProcess?: string) => {

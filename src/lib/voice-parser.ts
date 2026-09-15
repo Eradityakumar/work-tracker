@@ -14,23 +14,23 @@ export interface ParsedVoiceWorkLog {
 }
 
 export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
-  const text = (transcript || "").trim();
-  const lower = text.toLowerCase();
+  const raw = (transcript || "").trim();
+  const lower = raw.toLowerCase();
   const today = new Date().toISOString().split("T")[0];
 
-  // 1. Organization Detection (handles speech recognition variants & typos like "electric 3D")
+  // 1. Organization Detection
   let organization = "Galactic 3D";
-  if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic|syllabus|curriculum|lab/i.test(lower)) {
+  if (/\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|syllabus|curriculum|lab)\b/i.test(lower)) {
     organization = "Cambridge Institute of Technology";
-  } else if (/galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|order|tracking/i.test(lower)) {
+  } else if (/\b(galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|model)\b/i.test(lower)) {
     organization = "Galactic 3D";
   }
 
   // 2. Category Detection
   let category = "Development";
-  if (/\b(meet|meeting|meetings|call|sync|discussion|standup|client|huddle|interview|touchpoint|bass\s*aerospace)\b/i.test(lower)) {
+  if (/\b(meet|meeting|meetings|call|sync|discussion|standup|client|huddle|interview|touchpoint|project review|coordination meeting|review meeting)\b/i.test(lower)) {
     category = "Meeting";
-  } else if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets|shader|texture)\b/i.test(lower)) {
+  } else if (/\b(design|figma|\bui\b|\bux\b|mockup|wireframe|layout|css|styling|theme|assets|shader|texture)\b/i.test(lower)) {
     category = "Design";
   } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading|feasibility)\b/i.test(lower)) {
     category = "Research";
@@ -38,7 +38,7 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     category = "Testing";
   } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report|specification)\b/i.test(lower)) {
     category = "Documentation";
-  } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor|orders|tracking|browser)\b/i.test(lower)) {
+  } else {
     category = "Development";
   }
 
@@ -50,13 +50,15 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     priority = "LOW";
   }
 
-  // 4. Status Detection
+  // 4. Status Detection (work summaries of attended/completed tasks must be COMPLETED)
   let status: "COMPLETED" | "IN_PROGRESS" | "PENDING" = "COMPLETED";
-  if (/\b(in progress|still doing|underway|halfway|currently working)\b/i.test(lower)) {
-    status = "IN_PROGRESS";
-  } else if (/\b(pending|todo|to do|will do|scheduled|planned|next)\b/i.test(lower)) {
+  if (/^\s*(todo|to do|upcoming|scheduled|planned|next up|will do)\b/i.test(raw) ||
+      (/\b(to be done|pending implementation|yet to start)\b/i.test(lower) && !/\b(participated|attended|completed|worked on|reviewed|conducted|built|finished|discussed)\b/i.test(lower))) {
     status = "PENDING";
-  } else if (/\b(done|finished|completed|resolved|wrapped up|attended|shipped|fixed|was working on)\b/i.test(lower)) {
+  } else if (/\b(currently working on|still in progress|wip|work in progress|ongoing|halfway done)\b/i.test(lower) &&
+             !/\b(participated in|attended|completed|finished|wrapped up)\b/i.test(lower)) {
+    status = "IN_PROGRESS";
+  } else {
     status = "COMPLETED";
   }
 
@@ -86,83 +88,127 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     endTime = `${String(eH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
   }
 
-  // 6. Notes / Blockers Extraction
+  // 6. Notes / Blockers: Only extract if explicitly marked or formulated as an impediment
   let notes = "";
-  const notesMatch = text.match(/(?:notes?|blockers?|issues?|hurdles?|stuck on|problem was|fixed bug|resolved)[:\s]+([^.]+)/i);
-  if (notesMatch) {
-    notes = notesMatch[1].trim();
+  const blockerMatch = raw.match(/\b(?:blockers?|hurdles?|issues? faced|impediments?|challenges?|stuck on|problem was|blocked by)[:\-–]\s*([^\n.]+)/i);
+  if (blockerMatch) {
+    notes = blockerMatch[1].trim();
   }
 
-  // 7. Learnings / Insights Extraction
+  // 7. Learnings / Insights: Only extract if explicitly marked or formulated as a takeaway
   let learnings = "";
-  const learningsMatch = text.match(/(?:learnings?|insights?|takeaways?|learned that|learned about|understood)[:\s]+([^.]+)/i);
-  if (learningsMatch) {
-    learnings = learningsMatch[1].trim();
+  const learningMatch = raw.match(/\b(?:learnings?|key insights?|takeaways?|learned that|main takeaway)[:\-–]\s*([^\n.]+)/i);
+  if (learningMatch) {
+    learnings = learningMatch[1].trim();
   }
 
-  // 8. Tags Extraction
+  // 8. Tags: Extract strict word-bounded tags
   const detectedTags: string[] = [];
-  if (/bass\s*aerospace|aerospace/i.test(lower)) detectedTags.push("Bass Aerospace");
-  if (/orders?|tracking/i.test(lower)) detectedTags.push("Order Tracking");
-  if (/meeting|call|sync/i.test(lower)) detectedTags.push("Meeting");
-  if (/browser/i.test(lower)) detectedTags.push("Browser Integration");
-  if (/cambridge|student|exam|class/i.test(lower)) detectedTags.push("Cambridge");
-  if (/galactic|3d/i.test(lower)) detectedTags.push("Galactic 3D");
+  if (/\b(bass aerospace|aerospace)\b/i.test(lower)) detectedTags.push("Bass Aerospace");
+  if (/\b(order tracking|tracking orders)\b/i.test(lower)) detectedTags.push("Order Tracking");
+  if (/\b(meeting|meetings|standup|sync|huddle)\b/i.test(lower)) detectedTags.push("Meeting");
+  if (/\b(project review|review)\b/i.test(lower)) detectedTags.push("Project Review");
+  if (/\b(coordination|stakeholders)\b/i.test(lower)) detectedTags.push("Coordination");
+  if (/\b(cambridge|student|students|exam|class|lecture)\b/i.test(lower)) detectedTags.push("Cambridge");
+  if (/\b(galactic|3d model|3d rendering)\b/i.test(lower)) detectedTags.push("Galactic 3D");
 
-  const commonTech = [
-    "react", "nextjs", "typescript", "javascript", "tailwind", "css", "mongodb",
-    "prisma", "threejs", "webgl", "blender", "python", "api", "auth", "docker",
-    "node", "jwt", "sql", "git", "figma", "ui", "ux", "redux"
+  const commonTechRegexes: [RegExp, string][] = [
+    [/\breact\b/i, "React"],
+    [/\bnext(?:\.js|js)?\b/i, "Next.js"],
+    [/\btypescript\b/i, "TypeScript"],
+    [/\bjavascript\b/i, "JavaScript"],
+    [/\btailwind\b/i, "Tailwind CSS"],
+    [/\bthree(?:\.js|js)?\b/i, "Three.js"],
+    [/\bwebgl\b/i, "WebGL"],
+    [/\bblender\b/i, "Blender"],
+    [/\bpython\b/i, "Python"],
+    [/\bapi\b/i, "API"],
+    [/\bauth(?:entication)?\b/i, "Auth"],
+    [/\bdocker\b/i, "Docker"],
+    [/\bnode(?:\.js|js)?\b/i, "Node.js"],
+    [/\bjwt\b/i, "JWT"],
+    [/\bsql\b/i, "SQL"],
+    [/\bmongodb\b/i, "MongoDB"],
+    [/\bprisma\b/i, "Prisma"],
+    [/\bgit\b/i, "Git"],
+    [/\bfigma\b/i, "Figma"],
+    [/\bui\b/i, "UI"],
+    [/\bux\b/i, "UX"],
+    [/\brefactor\b/i, "Refactoring"],
+    [/\bbug(?:fix)?\b/i, "Bug Fix"],
   ];
-  commonTech.forEach((t) => {
-    if (lower.includes(t)) detectedTags.push(t.toUpperCase());
+
+  commonTechRegexes.forEach(([reg, label]) => {
+    if (reg.test(lower)) detectedTags.push(label);
   });
   const tags = Array.from(new Set(detectedTags)).join(", ");
 
-  // 9. Intelligent Title Generation
+  // 9. Intelligent, Human-Grade Title Generation
   let title = "";
 
-  // Check specific high-signal cues first
-  if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
+  // A. Check for explicit title / subject prefixes
+  const explicitTitleMatch = raw.match(/^(?:title|task|subject|meeting|activity|deliverable)[:\-–]\s*([^\n]+)/i);
+  if (explicitTitleMatch && explicitTitleMatch[1].trim().length > 3) {
+    title = explicitTitleMatch[1].trim();
+  } else if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
     title = "Meeting with Bass Aerospace & Order Tracking";
   } else if (/bass\s*aerospace/i.test(lower)) {
     title = "Meeting with Bass Aerospace";
   } else {
-    // Strip common speech/typing prefixes
-    let clean = text
+    // B. Extract the first sentence / clause
+    const firstLine = raw.split(/[\n.!?]/)[0].trim();
+
+    // Strip leading conversational and action verbs
+    let cleaned = firstLine
+      .replace(/^(participated in (the|a)?|participated (the|a)?|attended (the|a)?|conducted (the|a)?|worked on (the|a)?|working on (the|a)?|built (the|a)?|created (the|a)?|developed (the|a)?|fixed (the|a)?|resolved (the|a)?|implemented (the|a)?|reviewed (the|a)?|completed (the|a)?|joined (the|a)?|held (the|a)?|spent time on (the|a)?|today i (was|worked|did|participated in|attended)?|i was working on|we had (the|a)?|had (the|a)?)\s+/i, "")
       .replace(/^(electric\s*3d|galactic\s*3d|cambridge)\s*(was there today|today|there today)?\s*(so was|so i was|i was|was)?\s*/i, "")
-      .replace(/^(today\s*i\s*(was|worked|built|did|spent time on)|working on|worked on|i was working on|i did|spent time on|handled)\s+/i, "")
       .replace(/\s+(from|between)\s+\d+.*$/i, "")
       .trim();
 
-    // Clean conversational filler words
-    clean = clean.replace(/\b(and also like|also like|like figureing out|figureing out|figuring out)\b/gi, "& review");
+    // Strip audience / context tails (e.g. "with the development team and stakeholders", "to discuss XYZ")
+    const preAudience = cleaned.replace(/\s+\b(with|for|regarding|about|to discuss|in order to|aimed at|where we|as part of|across)\b.*$/i, "").trim();
+    if (preAudience.length >= 8) {
+      cleaned = preAudience;
+    }
 
-    // Take the first clean clause or line
-    const firstLine = clean.split(/[\n.]/)[0].trim();
-    if (firstLine.length >= 5 && firstLine.length <= 80) {
-      // Capitalize first letter of words
-      title = firstLine
+    // Strip trailing conjunctions/prepositions (e.g., "and", "or", "with", "the", "for")
+    cleaned = cleaned.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an)\s*$/i, "").trim();
+
+    // Format & Title Case
+    if (cleaned.length >= 5) {
+      // Normalize 'and' to '&' for cleaner titles
+      const normalized = cleaned.replace(/\s+and\s+/gi, " & ");
+      title = normalized
         .split(" ")
-        .map((w) => w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+        .map((w) => {
+          if (w === "&") return "&";
+          return w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+        })
         .join(" ");
-    } else if (clean.length >= 5) {
-      const words = clean.split(" ").slice(0, 7).join(" ");
-      title = words.charAt(0).toUpperCase() + words.slice(1);
     } else {
-      title = `${category} Task - ${organization.split(" ")[0]}`;
+      title = `${category} - ${organization.split(" ")[0]}`;
     }
   }
 
-  // Ensure title length is concise & clean
-  if (title.length > 70) {
-    title = title.substring(0, 67) + "...";
+  // Ensure title is concise and doesn't end abruptly
+  if (title.length > 65) {
+    const words = title.split(" ");
+    let shortTitle = "";
+    for (const w of words) {
+      if ((shortTitle + " " + w).trim().length <= 60) {
+        shortTitle = (shortTitle + " " + w).trim();
+      } else {
+        break;
+      }
+    }
+    title = shortTitle || title.substring(0, 60);
+    title = title.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an|&)\s*$/i, "").trim();
   }
 
   return {
     organization,
     title,
-    description: text || "Completed work deliverables.",
+    description: raw || "Completed work deliverables.",
     category,
     date: today,
     startTime,
