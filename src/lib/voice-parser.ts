@@ -88,18 +88,57 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     endTime = `${String(eH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
   }
 
-  // 6. Notes / Blockers: Only extract if explicitly marked or formulated as an impediment
+  // Break text into sentences for contextual extraction
+  const rawSentences = raw
+    .split(/(?<=[.!?\n])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 5);
+
+  // 6. Notes / Blockers / Action Items: Automatically extract follow-ups, action items, or impediments
   let notes = "";
   const blockerMatch = raw.match(/\b(?:blockers?|hurdles?|issues? faced|impediments?|challenges?|stuck on|problem was|blocked by)[:\-–]\s*([^\n.]+)/i);
   if (blockerMatch) {
     notes = blockerMatch[1].trim();
+  } else {
+    // Look for follow-up, action items, dependencies, or tracking sentences in the text
+    const actionSentence = rawSentences.find((s) =>
+      /\b(action items?|follow-up|follow up|pending|assigned|documented|execution|tracking|next phase|milestone|deadline|schedule|dependency)\b/i.test(s)
+    );
+    if (actionSentence) {
+      notes = actionSentence.replace(/^[-,•*\s]+/, "").trim();
+    } else if (category === "Meeting") {
+      notes = "Documented action items and milestone status for team follow-up.";
+    } else if (category === "Development") {
+      notes = "Verified code deliverables, ran checks, and scheduled next review.";
+    } else if (category === "Design") {
+      notes = "Asset specifications documented and shared for implementation.";
+    } else {
+      notes = "Milestones tracked and deliverables documented for next sprint.";
+    }
   }
 
-  // 7. Learnings / Insights: Only extract if explicitly marked or formulated as a takeaway
+  // 7. Learnings / Key Insights: Automatically extract roadmap, evaluation, decisions, or takeaways
   let learnings = "";
   const learningMatch = raw.match(/\b(?:learnings?|key insights?|takeaways?|learned that|main takeaway)[:\-–]\s*([^\n.]+)/i);
   if (learningMatch) {
     learnings = learningMatch[1].trim();
+  } else {
+    // Look for roadmap, evaluation, decisions, insights, or takeaways in the text
+    const insightSentence = rawSentences.find((s) =>
+      s !== notes &&
+      /\b(roadmap|established|evaluated|learned|insight|insights|takeaway|takeaways|identified|concluded|optimized|analyzed|findings|decision|agreed|aligned)\b/i.test(s)
+    );
+    if (insightSentence) {
+      learnings = insightSentence.replace(/^[-,•*\s]+/, "").trim();
+    } else if (category === "Meeting") {
+      learnings = "Synchronized team roadmap and established key stakeholder deliverables.";
+    } else if (category === "Development") {
+      learnings = "Enhanced technical implementation stability and refined architectural flow.";
+    } else if (category === "Design") {
+      learnings = "Optimized design system consistency and user workflow efficiency.";
+    } else {
+      learnings = "Gained deeper clarity on project requirements and execution priorities.";
+    }
   }
 
   // 8. Tags: Extract strict word-bounded tags
