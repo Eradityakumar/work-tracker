@@ -536,40 +536,122 @@ import { parseVoiceLocally, ParsedVoiceWorkLog } from "@/lib/voice-parser";
 export { parseVoiceLocally };
 export type { ParsedVoiceWorkLog };
 
-export async function parseVoiceWorkLog(transcript: string): Promise<ParsedVoiceWorkLog> {
+export async function parseWithGemini(transcript: string, apiKey: string): Promise<ParsedVoiceWorkLog | null> {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const prompt = `You are WorkTrail AI's intelligent work log parser.
+Extract structured work log fields from the user's update.
+Return ONLY a valid raw JSON object (without markdown code blocks, backticks, or other text) with these exact keys:
+{
+  "organization": "Galactic 3D" or "Cambridge Institute of Technology",
+  "title": "Concise, professional title (3-7 words, Title Cased, e.g. Daily Project Review & Coordination Meeting)",
+  "description": "Clean, well-written detailed description of deliverables worked on",
+  "category": "Meeting" | "Development" | "Design" | "Research" | "Testing" | "Documentation" | "Other",
+  "date": "${today}",
+  "startTime": "HH:MM" (e.g. "09:00"),
+  "endTime": "HH:MM" (e.g. "11:00"),
+  "priority": "HIGH" | "MEDIUM" | "LOW",
+  "status": "COMPLETED" | "IN_PROGRESS" | "PENDING",
+  "notes": "Action items, follow-ups, blockers, or pending dependencies",
+  "learnings": "Key takeaways, insights, roadmap decisions, or strategic learnings",
+  "tags": "Comma-separated keywords (e.g. Meeting, Project Review, Coordination, Stakeholders)"
+}
+
+User's Work Summary:
+"${transcript.replace(/"/g, '\\"')}"`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn("Gemini parsing failed with status:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) return null;
+
+    const parsed = JSON.parse(rawText);
+    return {
+      organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
+      title: parsed.title || "Daily Work Deliverables",
+      description: parsed.description || transcript,
+      category: ["Meeting", "Development", "Design", "Research", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
+      date: parsed.date || today,
+      startTime: parsed.startTime || "09:00",
+      endTime: parsed.endTime || "11:00",
+      priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",
+      status: ["COMPLETED", "IN_PROGRESS", "PENDING"].includes(parsed.status) ? parsed.status : "COMPLETED",
+      notes: parsed.notes || "",
+      learnings: parsed.learnings || "",
+      tags: parsed.tags || "",
+    };
+  } catch (err) {
+    console.warn("Gemini parse error:", err);
+    return null;
+  }
+}
+
+export async function parseVoiceWorkLog(
+  transcript: string,
+  customApiKey?: string
+): Promise<ParsedVoiceWorkLog> {
   const cleanTranscript = (transcript || "").trim();
 
-  // If OpenAI key is configured, prompt gpt-4o for structured extraction
-  if (openai && cleanTranscript.length > 5) {
+  // 1. Check Gemini API (free tier from Google AI Studio)
+  const geminiKey = customApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiKey && cleanTranscript.length > 5) {
+    const geminiParsed = await parseWithGemini(cleanTranscript, geminiKey);
+    if (geminiParsed) return geminiParsed;
+  }
+
+  // 2. Check OpenAI API if configured
+  const openAiKey = customApiKey || process.env.OPENAI_API_KEY;
+  const client = openAiKey
+    ? (openAiKey === process.env.OPENAI_API_KEY && openai ? openai : new OpenAI({ apiKey: openAiKey }))
+    : null;
+
+  if (client && cleanTranscript.length > 5) {
     try {
-      const response = await openai.chat.completions.create({
+      const response = await client.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `You are WorkTrail AI's intelligent voice work logger.
-The user speaks naturally about their work update.
-Extract structured fields and return a JSON object with:
-- organization: strictly either "Galactic 3D" or "Cambridge Institute of Technology" (infer from context: if 3D, design, software, threejs, webgl, model -> "Galactic 3D"; if college, academic, exam, class, lecture, student -> "Cambridge Institute of Technology"; default "Galactic 3D")
-- title: concise, professional title (3-7 words, Title Cased)
+            content: `You are WorkTrail AI's intelligent work log parser.
+The user provides a work update or meeting summary.
+Extract structured fields and return ONLY a raw JSON object with:
+- organization: strictly either "Galactic 3D" or "Cambridge Institute of Technology" (infer from context: if 3D, design, software, threejs, webgl, model, aerospace, orders -> "Galactic 3D"; if college, academic, exam, class, lecture, student -> "Cambridge Institute of Technology"; default "Galactic 3D")
+- title: concise, professional title (3-7 words, Title Cased, e.g. Daily Project Review & Coordination Meeting)
 - description: clear, well-phrased summary of deliverables worked on
 - category: one of ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"]
 - date: YYYY-MM-DD (current date)
-- startTime: 24h format HH:MM (e.g. "09:30" - infer or default "09:00")
-- endTime: 24h format HH:MM (e.g. "12:00" - infer or default "11:30")
+- startTime: 24h format HH:MM (e.g. "09:00")
+- endTime: 24h format HH:MM (e.g. "11:00")
 - priority: "HIGH", "MEDIUM", or "LOW"
 - status: "COMPLETED", "IN_PROGRESS", or "PENDING"
-- notes: hurdles, blockers, or bugs resolved mentioned (empty string if none)
-- learnings: strategic or technical insights/learnings (empty string if none)
-- tags: comma-separated technical keywords (e.g. "threejs, bugfix, api")`
+- notes: action items, follow-ups, blockers, or pending dependencies
+- learnings: key takeaways, insights, roadmap decisions, or strategic learnings
+- tags: comma-separated technical keywords (e.g. "Meeting, Project Review, Coordination, Stakeholders")`
           },
           {
             role: "user",
-            content: `Spoken Work Log: "${cleanTranscript}"`
+            content: `Work Log Summary: "${cleanTranscript}"`
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.2,
+        temperature: 0.1,
       });
 
       const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
@@ -594,6 +676,6 @@ Extract structured fields and return a JSON object with:
     }
   }
 
-  // Smart local NLP parser
+  // 3. Fallback to advanced semantic local NLP parser
   return parseVoiceLocally(cleanTranscript);
 }

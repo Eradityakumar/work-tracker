@@ -91,11 +91,12 @@ export function TaskFormModal({
     toast.info("AI is analyzing summary and auto-filling all spaces...", { duration: 3000 });
 
     try {
+      const savedKey = typeof window !== "undefined" ? localStorage.getItem("worktrail_ai_key") || "" : "";
       // Call AI endpoint first
       const res = await fetch("/api/ai/parse-voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: targetText, transcript: targetText }),
+        body: JSON.stringify({ summary: targetText, transcript: targetText, apiKey: savedKey }),
       });
 
       if (res.ok) {
@@ -429,6 +430,31 @@ export function TaskFormModal({
                   Clear
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const current = localStorage.getItem("worktrail_ai_key") || "";
+                  const key = prompt(
+                    "Optional: Enter your free Google Gemini API Key or OpenAI Key for 100% LLM AI accuracy (Leave empty to use built-in smart NLP):",
+                    current
+                  );
+                  if (key !== null) {
+                    if (key.trim()) {
+                      localStorage.setItem("worktrail_ai_key", key.trim());
+                      toast.success("AI Key saved! Powered by full LLM intelligence.");
+                    } else {
+                      localStorage.removeItem("worktrail_ai_key");
+                      toast.info("Using embedded smart NLP parser.");
+                    }
+                  }
+                }}
+                className="px-2.5 py-2 rounded-xl border border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold transition-all cursor-pointer flex items-center gap-1"
+                title="Configure Gemini or OpenAI API Key"
+              >
+                <span>⚙️</span>
+                <span className="hidden sm:inline">AI Model</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2">

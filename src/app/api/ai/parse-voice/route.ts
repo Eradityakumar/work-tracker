@@ -5,6 +5,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rawInput = body.transcript || body.summary || body.text;
+    const apiKey = body.apiKey || req.headers.get("x-api-key") || undefined;
 
     if (!rawInput || typeof rawInput !== "string") {
       return NextResponse.json(
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const parsed = await parseVoiceWorkLog(rawInput);
+    const parsed = await parseVoiceWorkLog(rawInput, apiKey);
     return NextResponse.json({ success: true, data: parsed });
   } catch (err: any) {
     console.error("Parse voice error:", err);

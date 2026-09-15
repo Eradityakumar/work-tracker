@@ -100,10 +100,15 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   if (blockerMatch) {
     notes = blockerMatch[1].trim();
   } else {
-    // Look for follow-up, action items, dependencies, or tracking sentences in the text
-    const actionSentence = rawSentences.find((s) =>
-      /\b(action items?|follow-up|follow up|pending|assigned|documented|execution|tracking|next phase|milestone|deadline|schedule|dependency)\b/i.test(s)
+    // Look for explicit action items or follow-ups first
+    let actionSentence = rawSentences.find((s) =>
+      /\b(action items?|follow-up|follow up|assigned action|assigned to stakeholders|deliverables documented|documented for execution|tasks were documented)\b/i.test(s)
     );
+    if (!actionSentence) {
+      actionSentence = rawSentences.find((s) =>
+        /\b(pending activities|pending tasks|pending|blocker|hurdle|issue|problem|stuck|dependency)\b/i.test(s)
+      );
+    }
     if (actionSentence) {
       notes = actionSentence.replace(/^[-,•*\s]+/, "").trim();
     } else if (category === "Meeting") {
@@ -123,13 +128,25 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   if (learningMatch) {
     learnings = learningMatch[1].trim();
   } else {
-    // Look for roadmap, evaluation, decisions, insights, or takeaways in the text
-    const insightSentence = rawSentences.find((s) =>
-      s !== notes &&
-      /\b(roadmap|established|evaluated|learned|insight|insights|takeaway|takeaways|identified|concluded|optimized|analyzed|findings|decision|agreed|aligned)\b/i.test(s)
-    );
-    if (insightSentence) {
-      learnings = insightSentence.replace(/^[-,•*\s]+/, "").trim();
+    // Score candidate sentences for strategic learning / roadmap / takeaway
+    const candidateSentences = rawSentences.filter((s) => s !== notes);
+    let bestInsight = "";
+    let maxScore = 0;
+
+    for (const s of candidateSentences) {
+      let score = 0;
+      if (/\b(roadmap|next phase)\b/i.test(s)) score += 4;
+      if (/\b(evaluated|established|concluded|decision)\b/i.test(s)) score += 3;
+      if (/\b(learned|insight|insights|takeaway|takeaways|findings|agreed|aligned)\b/i.test(s)) score += 3;
+      if (/\b(optimized|analyzed|identified)\b/i.test(s)) score += 1;
+      if (score > maxScore) {
+        maxScore = score;
+        bestInsight = s;
+      }
+    }
+
+    if (bestInsight && maxScore > 0) {
+      learnings = bestInsight.replace(/^[-,•*\s]+/, "").trim();
     } else if (category === "Meeting") {
       learnings = "Synchronized team roadmap and established key stakeholder deliverables.";
     } else if (category === "Development") {
@@ -153,18 +170,18 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
 
   const commonTechRegexes: [RegExp, string][] = [
     [/\breact\b/i, "React"],
-    [/\bnext(?:\.js|js)?\b/i, "Next.js"],
+    [/\bnext\.?js\b/i, "Next.js"],
     [/\btypescript\b/i, "TypeScript"],
     [/\bjavascript\b/i, "JavaScript"],
     [/\btailwind\b/i, "Tailwind CSS"],
-    [/\bthree(?:\.js|js)?\b/i, "Three.js"],
+    [/\bthree\.?js\b/i, "Three.js"],
     [/\bwebgl\b/i, "WebGL"],
     [/\bblender\b/i, "Blender"],
     [/\bpython\b/i, "Python"],
     [/\bapi\b/i, "API"],
     [/\bauth(?:entication)?\b/i, "Auth"],
     [/\bdocker\b/i, "Docker"],
-    [/\bnode(?:\.js|js)?\b/i, "Node.js"],
+    [/\bnode\.?js\b|\bnodejs\b/i, "Node.js"],
     [/\bjwt\b/i, "JWT"],
     [/\bsql\b/i, "SQL"],
     [/\bmongodb\b/i, "MongoDB"],
