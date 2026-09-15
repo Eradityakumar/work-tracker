@@ -6,10 +6,9 @@ import {
   LayoutDashboard,
   Clock,
   Calendar,
-  Sparkles,
+  CalendarRange,
   FileText,
-  FolderLock,
-  BookOpen,
+  Sparkles,
   BarChart3,
   Search,
   Users,
@@ -39,8 +38,10 @@ export function Sidebar({ user, onOpenQuickTask, onLogout }: SidebarProps) {
 
   const navItems = [
     { label: "Work Tracker", href: "/work-logs", icon: Clock },
+    { label: "Weekly Tracker", href: "/weekly-tracker", icon: CalendarRange, badge: "Week/Month" },
     { label: "Day Timeline", href: "/timeline", icon: Clock, badge: "Live" },
     { label: "Calendar", href: "/calendar", icon: Calendar },
+    { label: "AI Reports", href: "/reports", icon: FileText },
     { label: "Search", href: "/search", icon: Search },
   ];
 

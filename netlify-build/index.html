@@ -178,6 +178,15 @@
             <span>Calendar</span>
           </div>
         </button>
+
+        <!-- Tab 4: Weekly & Monthly Tracker -->
+        <button onclick="switchTab('weekly')" id="nav-weekly" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition-all">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="calendar-range" class="w-4 h-4 text-slate-400"></i>
+            <span>Weekly Tracker</span>
+          </div>
+          <span class="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold uppercase">Reports</span>
+        </button>
       </div>
 
       <!-- Cloud Sync Indicator in Sidebar -->
@@ -372,6 +381,88 @@
         </div>
       </div>
 
+      <!-- ================= VIEW 4: WEEKLY & MONTHLY TRACKER ================= -->
+      <div id="view-weekly" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <i data-lucide="calendar-range" class="w-6 h-6 text-indigo-600"></i>
+              <span>Weekly & Monthly Tracker</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Comprehensive audit of weekly deliverables, workplace split, and instant reports.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportWeeklyReport()" class="flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-indigo-100 transition-all active:scale-95">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>Generate Report</span>
+            </button>
+            <button onclick="openModal()" class="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 shadow-xs">
+              <i data-lucide="plus" class="w-4 h-4 text-indigo-600"></i>
+              <span>+ Log Work</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Stepper & Filter -->
+        <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+            <button onclick="setWeeklyMode('WEEKLY')" id="weeklyModeWeekBtn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-xs">Weekly View</button>
+            <button onclick="setWeeklyMode('MONTHLY')" id="weeklyModeMonthBtn" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900">Monthly View</button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="changeWeeklyPeriod(-1)" class="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="resetWeeklyPeriod()" class="px-2.5 py-1 text-xs font-bold uppercase tracking-wider border border-slate-200 rounded-lg hover:bg-slate-100" id="weeklyCurrentPeriodBtn">
+              This Week
+            </button>
+            <button onclick="changeWeeklyPeriod(1)" class="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <span id="weeklyDateRangeLabel" class="font-bold text-sm text-slate-800 ml-2">Loading...</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="weeklyOrgFilter" onchange="renderWeeklyTracker()" class="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-700">
+              <option value="ALL">All Workplaces</option>
+              <option value="Galactic 3D">🚀 Galactic 3D</option>
+              <option value="Cambridge Institute of Technology">🎓 Cambridge Inst.</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- KPI Metrics -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tracked</p>
+            <p id="weeklyTotalHours" class="text-2xl font-black text-slate-800 mt-1">0 hrs</p>
+            <p id="weeklyTotalTasksCount" class="text-[11px] text-slate-400 mt-0.5">0 deliverables</p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-cyan-200 bg-cyan-50/40 shadow-xs">
+            <p class="text-xs font-bold text-cyan-800 uppercase tracking-wider">🚀 Galactic 3D</p>
+            <p id="weeklyGalacticHours" class="text-2xl font-black text-cyan-900 mt-1">0 hrs</p>
+            <p id="weeklyGalacticTasks" class="text-[11px] text-cyan-700 mt-0.5">0 tasks</p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs">
+            <p class="text-xs font-bold text-amber-800 uppercase tracking-wider">🎓 Cambridge Inst.</p>
+            <p id="weeklyCambridgeHours" class="text-2xl font-black text-amber-900 mt-1">0 hrs</p>
+            <p id="weeklyCambridgeTasks" class="text-[11px] text-amber-700 mt-0.5">0 tasks</p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-xs">
+            <p class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Completion</p>
+            <p id="weeklyCompletionRate" class="text-2xl font-black text-emerald-900 mt-1">100%</p>
+            <p id="weeklyCompletedDone" class="text-[11px] text-emerald-700 mt-0.5">0 completed</p>
+          </div>
+        </div>
+
+        <!-- Weekly Day-by-Day List -->
+        <div id="weeklyDaysContainer" class="space-y-4"></div>
+      </div>
+
     </main>
 
     <!-- MOBILE BOTTOM NAVIGATION -->
@@ -402,9 +493,9 @@
         <span>Calendar</span>
       </button>
 
-      <button onclick="document.getElementById('searchInput').focus(); window.scrollTo({top: 0, behavior: 'smooth'});" class="flex flex-col items-center justify-center min-w-[56px] py-1 text-[10px] font-medium text-slate-500 active:scale-95 transition-all">
-        <i data-lucide="search" class="w-5 h-5 mb-0.5"></i>
-        <span>Search</span>
+      <button onclick="switchTab('weekly')" id="m-nav-weekly" class="flex flex-col items-center justify-center min-w-[56px] py-1 text-[10px] font-medium text-slate-500 active:scale-95 transition-all">
+        <i data-lucide="calendar-range" class="w-5 h-5 mb-0.5"></i>
+        <span>Weekly</span>
       </button>
     </nav>
   </div>
@@ -689,7 +780,7 @@
     // Tab Switching
     function switchTab(tab) {
       currentTab = tab;
-      const views = ['tracker', 'timeline', 'calendar'];
+      const views = ['tracker', 'timeline', 'calendar', 'weekly'];
       views.forEach(v => {
         const viewEl = document.getElementById(`view-${v}`);
         if (viewEl) viewEl.classList.add('hidden');
@@ -721,6 +812,7 @@
       if (tab === 'tracker') renderTasks();
       if (tab === 'timeline') renderTimeline();
       if (tab === 'calendar') renderCalendar();
+      if (tab === 'weekly') renderWeeklyTracker();
       lucide.createIcons();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1195,6 +1287,245 @@
           </div>
         `;
       }).join('');
+    }
+
+    // ================= WEEKLY & MONTHLY TRACKER LOGIC =================
+    let weeklyTrackerMode = 'WEEKLY';
+    let weeklyReferenceDate = new Date();
+
+    function setWeeklyMode(mode) {
+      weeklyTrackerMode = mode;
+      const weekBtn = document.getElementById('weeklyModeWeekBtn');
+      const monthBtn = document.getElementById('weeklyModeMonthBtn');
+      const periodBtn = document.getElementById('weeklyCurrentPeriodBtn');
+
+      if (mode === 'WEEKLY') {
+        weekBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-xs";
+        monthBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900";
+        if (periodBtn) periodBtn.innerText = "This Week";
+      } else {
+        monthBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-xs";
+        weekBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900";
+        if (periodBtn) periodBtn.innerText = "This Month";
+      }
+      renderWeeklyTracker();
+    }
+
+    function changeWeeklyPeriod(offset) {
+      if (weeklyTrackerMode === 'WEEKLY') {
+        weeklyReferenceDate.setDate(weeklyReferenceDate.getDate() + offset * 7);
+      } else {
+        weeklyReferenceDate.setMonth(weeklyReferenceDate.getMonth() + offset);
+      }
+      renderWeeklyTracker();
+    }
+
+    function resetWeeklyPeriod() {
+      weeklyReferenceDate = new Date();
+      renderWeeklyTracker();
+    }
+
+    function getWeekRange(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diffToMon = d.getDate() - day + (day === 0 ? -6 : 1);
+      const start = new Date(d.setDate(diffToMon));
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { start, end };
+    }
+
+    function renderWeeklyTracker() {
+      const allUserTasks = getTasks().filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+      const orgFilter = document.getElementById('weeklyOrgFilter') ? document.getElementById('weeklyOrgFilter').value : 'ALL';
+      const filteredTasks = orgFilter === 'ALL' ? allUserTasks : allUserTasks.filter(t => t.organization === orgFilter);
+
+      let periodStart, periodEnd, rangeLabel;
+
+      if (weeklyTrackerMode === 'WEEKLY') {
+        const { start, end } = getWeekRange(weeklyReferenceDate);
+        periodStart = start;
+        periodEnd = end;
+        rangeLabel = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      } else {
+        periodStart = new Date(weeklyReferenceDate.getFullYear(), weeklyReferenceDate.getMonth(), 1);
+        periodEnd = new Date(weeklyReferenceDate.getFullYear(), weeklyReferenceDate.getMonth() + 1, 0);
+        rangeLabel = weeklyReferenceDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      const labelEl = document.getElementById('weeklyDateRangeLabel');
+      if (labelEl) labelEl.innerText = rangeLabel;
+
+      const pStartStr = periodStart.toISOString().split('T')[0];
+      const pEndStr = periodEnd.toISOString().split('T')[0];
+      const periodTasks = filteredTasks.filter(t => t.date >= pStartStr && t.date <= pEndStr);
+
+      let totalMinutes = 0;
+      let galacticMinutes = 0;
+      let cambridgeMinutes = 0;
+      let galacticCount = 0;
+      let cambridgeCount = 0;
+      let completedCount = 0;
+
+      periodTasks.forEach(t => {
+        let mins = 60;
+        if (t.startTime && t.endTime) {
+          const [sH, sM] = t.startTime.split(':').map(Number);
+          const [eH, eM] = t.endTime.split(':').map(Number);
+          mins = Math.max(15, (eH * 60 + eM) - (sH * 60 + sM));
+        }
+        totalMinutes += mins;
+        if (t.organization === 'Galactic 3D') {
+          galacticMinutes += mins;
+          galacticCount++;
+        } else {
+          cambridgeMinutes += mins;
+          cambridgeCount++;
+        }
+        if (t.status === 'COMPLETED' || !t.status) completedCount++;
+      });
+
+      const totalHoursStr = `${(totalMinutes / 60).toFixed(1)} hrs`;
+      const galacticHoursStr = `${(galacticMinutes / 60).toFixed(1)} hrs`;
+      const cambridgeHoursStr = `${(cambridgeMinutes / 60).toFixed(1)} hrs`;
+      const completionRate = periodTasks.length > 0 ? Math.round((completedCount / periodTasks.length) * 100) : 100;
+
+      if (document.getElementById('weeklyTotalHours')) document.getElementById('weeklyTotalHours').innerText = totalHoursStr;
+      if (document.getElementById('weeklyTotalTasksCount')) document.getElementById('weeklyTotalTasksCount').innerText = `${periodTasks.length} deliverables`;
+      if (document.getElementById('weeklyGalacticHours')) document.getElementById('weeklyGalacticHours').innerText = galacticHoursStr;
+      if (document.getElementById('weeklyGalacticTasks')) document.getElementById('weeklyGalacticTasks').innerText = `${galacticCount} tasks`;
+      if (document.getElementById('weeklyCambridgeHours')) document.getElementById('weeklyCambridgeHours').innerText = cambridgeHoursStr;
+      if (document.getElementById('weeklyCambridgeTasks')) document.getElementById('weeklyCambridgeTasks').innerText = `${cambridgeCount} tasks`;
+      if (document.getElementById('weeklyCompletionRate')) document.getElementById('weeklyCompletionRate').innerText = `${completionRate}%`;
+      if (document.getElementById('weeklyCompletedDone')) document.getElementById('weeklyCompletedDone').innerText = `${completedCount} completed`;
+
+      const daysContainer = document.getElementById('weeklyDaysContainer');
+      if (!daysContainer) return;
+
+      if (periodTasks.length === 0) {
+        daysContainer.innerHTML = `
+          <div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+            <i data-lucide="calendar-x" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
+            <h3 class="text-sm font-bold text-slate-700">No deliverables recorded for ${rangeLabel}</h3>
+            <p class="text-xs text-slate-400 mt-1">Click "+ Log Work" to record activities or choose another period.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      const byDate = {};
+      periodTasks.forEach(t => {
+        if (!byDate[t.date]) byDate[t.date] = [];
+        byDate[t.date].push(t);
+      });
+
+      const sortedDates = Object.keys(byDate).sort().reverse();
+      daysContainer.innerHTML = sortedDates.map(dateStr => {
+        const dTasks = byDate[dateStr];
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-3.5 sm:p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-sm text-slate-800">${dayName}, ${formattedDate}</span>
+                <span class="text-xs text-slate-400 ml-2">(${dTasks.length} ${dTasks.length === 1 ? 'task' : 'tasks'})</span>
+              </div>
+              <button onclick="openModal(); document.getElementById('taskDate').value='${dateStr}';" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                + Add Work
+              </button>
+            </div>
+            <div class="p-3 sm:p-4 space-y-3">
+              ${dTasks.map(t => {
+                const isGalactic = t.organization === 'Galactic 3D';
+                return `
+                  <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                    <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isGalactic ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">
+                          ${isGalactic ? '🚀 Galactic 3D' : '🎓 Cambridge'}
+                        </span>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          ${t.category || 'Development'}
+                        </span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">
+                          ${t.status || 'COMPLETED'}
+                        </span>
+                      </div>
+                      <span class="text-xs font-bold text-slate-500">${t.startTime || '09:00'} - ${t.endTime || '17:00'}</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-slate-800">${escapeHtml(t.title)}</h4>
+                    ${t.description ? `<p class="text-xs text-slate-600 mt-1">${escapeHtml(t.description)}</p>` : ''}
+                    ${t.notes ? `<p class="text-[11px] text-slate-500 mt-1 bg-white p-2 rounded-lg border border-slate-100"><strong class="text-slate-600">Notes:</strong> ${escapeHtml(t.notes)}</p>` : ''}
+                    ${t.learnings ? `<p class="text-[11px] text-purple-700 mt-1 bg-purple-50 p-2 rounded-lg border border-purple-100"><strong class="text-purple-800">Learnings:</strong> ${escapeHtml(t.learnings)}</p>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function exportWeeklyReport() {
+      const allUserTasks = getTasks().filter(t => t.userEmail && t.userEmail.toLowerCase() === currentUser.email.toLowerCase());
+      const orgFilter = document.getElementById('weeklyOrgFilter') ? document.getElementById('weeklyOrgFilter').value : 'ALL';
+      const filteredTasks = orgFilter === 'ALL' ? allUserTasks : allUserTasks.filter(t => t.organization === orgFilter);
+
+      let periodStart, periodEnd, rangeLabel;
+      if (weeklyTrackerMode === 'WEEKLY') {
+        const { start, end } = getWeekRange(weeklyReferenceDate);
+        periodStart = start;
+        periodEnd = end;
+        rangeLabel = `Weekly Report (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
+      } else {
+        periodStart = new Date(weeklyReferenceDate.getFullYear(), weeklyReferenceDate.getMonth(), 1);
+        periodEnd = new Date(weeklyReferenceDate.getFullYear(), weeklyReferenceDate.getMonth() + 1, 0);
+        rangeLabel = `Monthly Report (${weeklyReferenceDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`;
+      }
+
+      const pStartStr = periodStart.toISOString().split('T')[0];
+      const pEndStr = periodEnd.toISOString().split('T')[0];
+      const periodTasks = filteredTasks.filter(t => t.date >= pStartStr && t.date <= pEndStr);
+
+      if (periodTasks.length === 0) {
+        alert("No deliverables found for this period to generate a report.");
+        return;
+      }
+
+      let reportText = `====================================================\n`;
+      reportText += `WORKTRAIL AI - EXECUTIVE WORK REPORT\n`;
+      reportText += `${rangeLabel}\n`;
+      reportText += `Employee: ${currentUser.name} (${currentUser.email})\n`;
+      reportText += `Total Tasks Completed: ${periodTasks.length}\n`;
+      reportText += `Generated At: ${new Date().toLocaleString()}\n`;
+      reportText += `====================================================\n\n`;
+
+      periodTasks.forEach((t, i) => {
+        reportText += `${i + 1}. [${t.date}] ${t.title}\n`;
+        reportText += `   Organization: ${t.organization}\n`;
+        reportText += `   Time: ${t.startTime || '09:00'} - ${t.endTime || '17:00'} | Category: ${t.category}\n`;
+        if (t.description) reportText += `   Description: ${t.description}\n`;
+        if (t.notes) reportText += `   Notes: ${t.notes}\n`;
+        if (t.learnings) reportText += `   Learnings: ${t.learnings}\n`;
+        reportText += `\n`;
+      });
+
+      const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${rangeLabel.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert(`Report downloaded successfully!`);
     }
 
     // Single Smart Voice Auto-Fill Recognition Handler

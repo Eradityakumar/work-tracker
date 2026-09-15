@@ -186,6 +186,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
           defaultDate={defaultTaskDate}
         />
 
+        <ReportGeneratorModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          defaultType={reportType}
+          onReportGenerated={triggerRefresh}
+        />
+
         <SearchModal
           isOpen={isSearchModalOpen}
           onClose={() => setIsSearchModalOpen(false)}
