@@ -351,3 +351,69 @@ export async function analyzeEvidenceFile(
     suggestedCategory,
   };
 }
+
+import { parseVoiceLocally, ParsedVoiceWorkLog } from "@/lib/voice-parser";
+export { parseVoiceLocally };
+export type { ParsedVoiceWorkLog };
+
+export async function parseVoiceWorkLog(transcript: string): Promise<ParsedVoiceWorkLog> {
+  const cleanTranscript = (transcript || "").trim();
+
+  // If OpenAI key is configured, prompt gpt-4o for structured extraction
+  if (openai && cleanTranscript.length > 5) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are WorkTrail AI's intelligent voice work logger.
+The user speaks naturally about their work update.
+Extract structured fields and return a JSON object with:
+- organization: strictly either "Galactic 3D" or "Cambridge Institute of Technology" (infer from context: if 3D, design, software, threejs, webgl, model -> "Galactic 3D"; if college, academic, exam, class, lecture, student -> "Cambridge Institute of Technology"; default "Galactic 3D")
+- title: concise, professional title (3-7 words, Title Cased)
+- description: clear, well-phrased summary of deliverables worked on
+- category: one of ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"]
+- date: YYYY-MM-DD (current date)
+- startTime: 24h format HH:MM (e.g. "09:30" - infer or default "09:00")
+- endTime: 24h format HH:MM (e.g. "12:00" - infer or default "11:30")
+- priority: "HIGH", "MEDIUM", or "LOW"
+- status: "COMPLETED", "IN_PROGRESS", or "PENDING"
+- notes: hurdles, blockers, or bugs resolved mentioned (empty string if none)
+- learnings: strategic or technical insights/learnings (empty string if none)
+- tags: comma-separated technical keywords (e.g. "threejs, bugfix, api")`
+          },
+          {
+            role: "user",
+            content: `Spoken Work Log: "${cleanTranscript}"`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      });
+
+      const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
+      if (parsed && parsed.title) {
+        return {
+          organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
+          title: parsed.title,
+          description: parsed.description || cleanTranscript,
+          category: ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
+          date: parsed.date || new Date().toISOString().split("T")[0],
+          startTime: parsed.startTime || "09:00",
+          endTime: parsed.endTime || "11:00",
+          priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",
+          status: ["COMPLETED", "IN_PROGRESS", "PENDING"].includes(parsed.status) ? parsed.status : "COMPLETED",
+          notes: parsed.notes || "",
+          learnings: parsed.learnings || "",
+          tags: parsed.tags || "",
+        };
+      }
+    } catch (e) {
+      console.warn("OpenAI voice parsing failed, using smart local parser:", e);
+    }
+  }
+
+  // Smart local NLP parser
+  return parseVoiceLocally(cleanTranscript);
+}

@@ -424,6 +424,45 @@
       </div>
 
       <form id="workForm" onsubmit="handleFormSubmit(event)" class="p-4 sm:p-6 space-y-4">
+        <!-- SINGLE SMART AI VOICE ASSISTANT BANNER -->
+        <div id="smartVoiceCard" class="p-3.5 sm:p-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-blue-50/70 transition-all shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div id="smartVoiceIconBox" class="p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow">
+                <i data-lucide="sparkles" id="smartVoiceIcon" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>Smart AI Voice Auto-Fill</span>
+                  <span class="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                    One Speak = All Filled
+                  </span>
+                </h4>
+                <p id="smartVoiceSubtitle" class="text-xs text-slate-500 mt-0.5">
+                  Speak naturally in one go — AI understands and fills every field!
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button 
+                type="button" 
+                id="smartVoiceActionBtn"
+                onclick="toggleSmartVoiceAutoFill()" 
+                class="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                <span id="smartVoiceActionText">Tap to Speak</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="smartVoiceTranscriptBox" class="hidden mt-3 pt-2.5 border-t border-indigo-100 text-xs text-slate-700 bg-white/70 rounded-lg p-2.5 italic">
+            <span class="font-bold text-indigo-600 not-italic">Recognized: </span>
+            <span id="smartVoiceTranscriptText"></span>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Workplace / Organization *</label>
           <div class="grid grid-cols-2 gap-3">
@@ -441,19 +480,7 @@
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1.5" class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Task Title *</label>
-            <button 
-              type="button" 
-              onclick="toggleSpeech('taskTitle', this)" 
-              id="voiceTitleBtn"
-              class="flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-200 active:scale-95"
-              title="Click to speak title"
-            >
-              <i data-lucide="mic" class="w-3.5 h-3.5"></i>
-              <span class="voice-label">Speak Title</span>
-            </button>
-          </div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Task Title *</label>
           <input type="text" id="taskTitle" required placeholder="e.g. Built frontend UI for tracking page" class="w-full px-4 py-2.5 text-base sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
         </div>
 
@@ -495,54 +522,18 @@
         </div>
 
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Detailed Description</label>
-            <button 
-              type="button" 
-              onclick="toggleSpeech('taskDescription', this)" 
-              id="voiceDescBtn"
-              class="flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-200 active:scale-95"
-              title="Click to speak description"
-            >
-              <i data-lucide="mic" class="w-3.5 h-3.5"></i>
-              <span class="voice-label">Speak Description</span>
-            </button>
-          </div>
-          <textarea id="taskDescription" rows="2" placeholder="What deliverables or milestones were worked on? (Or click Speak Description)" class="w-full px-4 py-2.5 text-base sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"></textarea>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Detailed Description</label>
+          <textarea id="taskDescription" rows="2" placeholder="What deliverables or milestones were worked on?" class="w-full px-4 py-2.5 text-base sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"></textarea>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Notes / Blockers</label>
-              <button 
-                type="button" 
-                onclick="toggleSpeech('taskNotes', this)" 
-                id="voiceNotesBtn"
-                class="flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-200 active:scale-95"
-                title="Click to speak notes"
-              >
-                <i data-lucide="mic" class="w-3.5 h-3.5"></i>
-                <span class="voice-label">Speak Notes</span>
-              </button>
-            </div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Notes / Blockers</label>
             <textarea id="taskNotes" rows="2" placeholder="Technical notes, blockers..." class="w-full px-3 py-2 text-base sm:text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
           </div>
 
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Learnings & Insights</label>
-              <button 
-                type="button" 
-                onclick="toggleSpeech('taskLearnings', this)" 
-                id="voiceLearningsBtn"
-                class="flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-200 active:scale-95"
-                title="Click to speak learnings"
-              >
-                <i data-lucide="mic" class="w-3.5 h-3.5"></i>
-                <span class="voice-label">Speak Insights</span>
-              </button>
-            </div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Learnings & Insights</label>
             <textarea id="taskLearnings" rows="2" placeholder="Key technical takeaway..." class="w-full px-3 py-2 text-base sm:text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
           </div>
         </div>
@@ -1206,100 +1197,233 @@
       }).join('');
     }
 
-    // Speech-to-Text Recognition Handler
-    let activeSpeechRecognition = null;
-    let activeTargetInputId = null;
-    let activeSpeechButton = null;
+    // Single Smart Voice Auto-Fill Recognition Handler
+    let smartSpeechRecognition = null;
+    let isSmartVoiceListening = false;
+    let smartVoiceTranscript = "";
 
-    function toggleSpeech(targetInputId, buttonEl) {
+    function parseVoiceLocally(transcript) {
+      const text = (transcript || "").trim();
+      const lower = text.toLowerCase();
+      const today = new Date().toISOString().split("T")[0];
+
+      // Organization
+      let organization = "Galactic 3D";
+      if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic/i.test(lower)) {
+        organization = "Cambridge Institute of Technology";
+      } else if (/galactic|3d|g3d|blender|three\s*js|webgl|unity|render|model/i.test(lower)) {
+        organization = "Galactic 3D";
+      }
+
+      // Category
+      let category = "Development";
+      if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets)\b/i.test(lower)) {
+        category = "Design";
+      } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading)\b/i.test(lower)) {
+        category = "Research";
+      } else if (/\b(meet|meeting|call|sync|discussion|standup|client|huddle|interview)\b/i.test(lower)) {
+        category = "Meeting";
+      } else if (/\b(test|testing|qa|verify|validation|cypress|jest|audit)\b/i.test(lower)) {
+        category = "Testing";
+      } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report)\b/i.test(lower)) {
+        category = "Documentation";
+      } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor)\b/i.test(lower)) {
+        category = "Development";
+      }
+
+      // Priority
+      let priority = "MEDIUM";
+      if (/\b(urgent|critical|high priority|asap|important|blocker|crucial|p0|p1)\b/i.test(lower)) {
+        priority = "HIGH";
+      } else if (/\b(low priority|minor|trivial|optional|whenever|p3|p4)\b/i.test(lower)) {
+        priority = "LOW";
+      }
+
+      // Times
+      let startTime = "09:00";
+      let endTime = "11:00";
+      const timeRangeMatch = lower.match(/(?:from\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|-|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+      if (timeRangeMatch) {
+        let sH = parseInt(timeRangeMatch[1], 10);
+        const sM = timeRangeMatch[2] ? parseInt(timeRangeMatch[2], 10) : 0;
+        const sMeridiem = timeRangeMatch[3] ? timeRangeMatch[3].toLowerCase() : null;
+
+        let eH = parseInt(timeRangeMatch[4], 10);
+        const eM = timeRangeMatch[5] ? parseInt(timeRangeMatch[5], 10) : 0;
+        const eMeridiem = timeRangeMatch[6] ? timeRangeMatch[6].toLowerCase() : null;
+
+        if (sMeridiem === "pm" && sH < 12) sH += 12;
+        if (eMeridiem === "pm" && eH < 12) eH += 12;
+        if (!eMeridiem && !sMeridiem) {
+          if (eH < sH) eH += 12;
+          else if (sH < 7) sH += 12;
+          if (eH < 7) eH += 12;
+        }
+
+        startTime = String(sH).padStart(2, "0") + ":" + String(sM).padStart(2, "0");
+        endTime = String(eH).padStart(2, "0") + ":" + String(eM).padStart(2, "0");
+      }
+
+      // Notes
+      let notes = "";
+      const notesMatch = text.match(/(?:notes?|blockers?|issues?|hurdles?|stuck on|problem was|fixed bug|resolved)[:\s]+([^.]+)/i);
+      if (notesMatch) notes = notesMatch[1].trim();
+
+      // Learnings
+      let learnings = "";
+      const learningsMatch = text.match(/(?:learnings?|insights?|takeaways?|learned that|learned about|understood)[:\s]+([^.]+)/i);
+      if (learningsMatch) learnings = learningsMatch[1].trim();
+
+      // Title
+      let title = "";
+      const firstSentence = text.split(/[.!?\n]/)[0].trim();
+      const cleanTitle = firstSentence
+        .replace(/^(i worked on|i built|i did|worked on|working on|today i|spent time on|for galactic 3d|for cambridge)\s+/i, "")
+        .replace(/\s+(from|between)\s+\d+.*$/i, "");
+
+      if (cleanTitle.length > 4 && cleanTitle.length < 75) {
+        title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+      } else {
+        title = category + " Deliverables - " + organization.split(" ")[0];
+      }
+
+      return {
+        organization,
+        title,
+        description: text || "Completed work deliverables.",
+        category,
+        date: today,
+        startTime,
+        endTime,
+        priority,
+        notes,
+        learnings
+      };
+    }
+
+    function applyVoiceAutoFill(data) {
+      if (!data) return;
+      if (data.organization) {
+        const orgRadio = document.querySelector(`input[name="organization"][value="${data.organization}"]`);
+        if (orgRadio) orgRadio.checked = true;
+      }
+      if (data.title) document.getElementById('taskTitle').value = data.title;
+      if (data.description) document.getElementById('taskDescription').value = data.description;
+      if (data.category) document.getElementById('taskCategory').value = data.category;
+      if (data.priority) document.getElementById('taskPriority').value = data.priority;
+      if (data.date) document.getElementById('taskDate').value = data.date;
+      if (data.startTime) document.getElementById('taskStartTime').value = data.startTime;
+      if (data.endTime) document.getElementById('taskEndTime').value = data.endTime;
+      if (data.notes && document.getElementById('taskNotes')) document.getElementById('taskNotes').value = data.notes;
+      if (data.learnings && document.getElementById('taskLearnings')) document.getElementById('taskLearnings').value = data.learnings;
+    }
+
+    function toggleSmartVoiceAutoFill() {
+      if (isSmartVoiceListening) {
+        stopSmartVoiceAutoFill();
+        return;
+      }
+
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
       if (!SpeechRecognition) {
         alert("Speech Recognition is not supported by your browser. Please use Google Chrome, Microsoft Edge, or Safari.");
         return;
       }
 
-      // If already listening to this field, stop it
-      if (activeSpeechRecognition && activeTargetInputId === targetInputId) {
-        stopSpeech();
-        return;
-      }
-
-      // If listening to a different field, stop the previous one first
-      if (activeSpeechRecognition) {
-        stopSpeech();
-      }
-
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      activeSpeechRecognition = recognition;
-      activeTargetInputId = targetInputId;
-      activeSpeechButton = buttonEl;
+      smartSpeechRecognition = recognition;
+      isSmartVoiceListening = true;
+      smartVoiceTranscript = "";
 
-      const labelSpan = buttonEl.querySelector('.voice-label');
-      const inputEl = document.getElementById(targetInputId);
-      const existingText = inputEl.value;
+      const card = document.getElementById('smartVoiceCard');
+      const iconBox = document.getElementById('smartVoiceIconBox');
+      const icon = document.getElementById('smartVoiceIcon');
+      const btn = document.getElementById('smartVoiceActionBtn');
+      const btnText = document.getElementById('smartVoiceActionText');
+      const sub = document.getElementById('smartVoiceSubtitle');
+      const transBox = document.getElementById('smartVoiceTranscriptBox');
+      const transText = document.getElementById('smartVoiceTranscriptText');
 
-      buttonEl.className = "flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-red-500 text-white animate-pulse shadow-sm border border-red-600";
-      if (labelSpan) labelSpan.innerText = "Listening...";
-      buttonEl.querySelector('i').setAttribute('data-lucide', 'mic-off');
+      if (card) {
+        card.className = "p-3.5 sm:p-4 rounded-2xl border border-rose-300 bg-rose-50/70 transition-all shadow-md animate-pulse";
+      }
+      if (iconBox) iconBox.className = "p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-rose-600 text-white shadow animate-bounce";
+      if (icon) icon.setAttribute('data-lucide', 'mic-off');
+      if (btn) {
+        btn.className = "w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer";
+      }
+      if (btnText) btnText.innerText = "Stop & Fill";
+      if (sub) sub.innerText = "Listening... Speak workplace, work done, times, and takeaways!";
       lucide.createIcons();
 
       recognition.onresult = (event) => {
         const transcript = Array.from(event.results)
           .map(result => result[0].transcript)
-          .join('');
-
-        if (existingText && !inputEl.value.startsWith(existingText)) {
-          inputEl.value = existingText + ' ' + transcript;
-        } else {
-          inputEl.value = transcript;
+          .join(' ');
+        smartVoiceTranscript = transcript;
+        if (transBox && transText) {
+          transBox.classList.remove('hidden');
+          transText.innerText = transcript;
         }
       };
 
       recognition.onerror = (event) => {
         console.warn('Speech recognition error:', event.error);
-        stopSpeech();
+        stopSmartVoiceAutoFill();
       };
 
       recognition.onend = () => {
-        stopSpeech();
+        stopSmartVoiceAutoFill();
       };
 
       try {
         recognition.start();
       } catch (err) {
-        stopSpeech();
+        stopSmartVoiceAutoFill();
       }
     }
 
-    function stopSpeech() {
-      if (activeSpeechRecognition) {
-        try { activeSpeechRecognition.stop(); } catch (e) {}
-        activeSpeechRecognition = null;
+    function stopSmartVoiceAutoFill() {
+      if (smartSpeechRecognition) {
+        try { smartSpeechRecognition.stop(); } catch (e) {}
+        smartSpeechRecognition = null;
       }
-      if (activeSpeechButton) {
-        activeSpeechButton.className = "flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-200";
-        const labelSpan = activeSpeechButton.querySelector('.voice-label');
-        if (labelSpan) {
-          if (activeTargetInputId === 'taskTitle') labelSpan.innerText = "Speak Title";
-          else if (activeTargetInputId === 'taskNotes') labelSpan.innerText = "Speak Notes";
-          else if (activeTargetInputId === 'taskLearnings') labelSpan.innerText = "Speak Insights";
-          else labelSpan.innerText = "Speak to Write";
-        }
-        activeSpeechButton.querySelector('i').setAttribute('data-lucide', 'mic');
-        lucide.createIcons();
+      isSmartVoiceListening = false;
+
+      const card = document.getElementById('smartVoiceCard');
+      const iconBox = document.getElementById('smartVoiceIconBox');
+      const icon = document.getElementById('smartVoiceIcon');
+      const btn = document.getElementById('smartVoiceActionBtn');
+      const btnText = document.getElementById('smartVoiceActionText');
+      const sub = document.getElementById('smartVoiceSubtitle');
+
+      if (card) {
+        card.className = "p-3.5 sm:p-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-blue-50/70 transition-all shadow-sm";
       }
-      activeTargetInputId = null;
-      activeSpeechButton = null;
+      if (iconBox) iconBox.className = "p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow";
+      if (icon) icon.setAttribute('data-lucide', 'sparkles');
+      if (btn) {
+        btn.className = "w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer";
+      }
+      if (btnText) btnText.innerText = "Tap to Speak";
+      if (sub) sub.innerText = "Speak naturally in one go — AI understands and fills every field!";
+      lucide.createIcons();
+
+      if (smartVoiceTranscript && smartVoiceTranscript.trim()) {
+        const parsed = parseVoiceLocally(smartVoiceTranscript);
+        applyVoiceAutoFill(parsed);
+      }
     }
 
     // Modal
     function openModal() {
-      stopSpeech();
+      stopSmartVoiceAutoFill();
+      const transBox = document.getElementById('smartVoiceTranscriptBox');
+      if (transBox) transBox.classList.add('hidden');
       tempAttachedPhotos = [];
       document.getElementById('photosPreviewContainer').innerHTML = '';
       document.getElementById('taskTitle').value = '';
@@ -1312,7 +1436,7 @@
     }
 
     function closeModal() {
-      stopSpeech();
+      stopSmartVoiceAutoFill();
       document.getElementById('logModal').classList.add('hidden');
     }
 

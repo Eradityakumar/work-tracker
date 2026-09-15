@@ -4,6 +4,7 @@ import * as React from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { calculateDuration, formatMinutes, CATEGORY_COLORS } from "@/lib/utils";
+import { parseVoiceLocally, ParsedVoiceWorkLog } from "@/lib/voice-parser";
 import {
   Upload,
   File,
@@ -17,6 +18,9 @@ import {
   AlertCircle,
   Mic,
   MicOff,
+  Square,
+  Loader2,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,19 +58,73 @@ export function TaskFormModal({
   const [isUploading, setIsUploading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Speech-to-text state
-  const [isListeningTitle, setIsListeningTitle] = React.useState(false);
-  const [isListeningDesc, setIsListeningDesc] = React.useState(false);
-  const [isListeningNotes, setIsListeningNotes] = React.useState(false);
-  const [isListeningLearnings, setIsListeningLearnings] = React.useState(false);
+  // Single Smart Voice Auto-Fill State
+  const [isListening, setIsListening] = React.useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = React.useState(false);
+  const [voiceTranscript, setVoiceTranscript] = React.useState("");
   const recognitionRef = React.useRef<any>(null);
+  const transcriptRef = React.useRef("");
 
-  const startVoiceInput = (field: "title" | "description" | "notes" | "learnings") => {
+  const applyParsedData = (data: ParsedVoiceWorkLog) => {
+    if (data.organization) setOrganization(data.organization);
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.category) setCategory(data.category);
+    if (data.startTime) setStartTime(data.startTime);
+    if (data.endTime) setEndTime(data.endTime);
+    if (data.priority) setPriority(data.priority);
+    if (data.status) setStatus(data.status);
+    if (data.notes) setNotes(data.notes);
+    if (data.learnings) setLearnings(data.learnings);
+    if (data.tags) setTags(data.tags);
+  };
+
+  const processVoiceTranscript = async (finalTranscript: string) => {
+    if (!finalTranscript || !finalTranscript.trim()) {
+      toast.info("No voice detected. Please try speaking again.");
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    toast.info("AI is analyzing your voice and filling the form...", { duration: 3000 });
+
+    try {
+      // Call AI endpoint first
+      const res = await fetch("/api/ai/parse-voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: finalTranscript }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result && result.data) {
+          applyParsedData(result.data);
+          toast.success("✨ All fields auto-filled from your voice!");
+          return;
+        }
+      }
+
+      // Fallback to local intelligent rule-based parser
+      const localParsed = parseVoiceLocally(finalTranscript);
+      applyParsedData(localParsed);
+      toast.success("✨ Auto-filled task details from your speech!");
+    } catch (err: any) {
+      console.warn("AI parsing fallback to local parser:", err);
+      const localParsed = parseVoiceLocally(finalTranscript);
+      applyParsedData(localParsed);
+      toast.success("✨ Auto-filled task details from speech!");
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  const startSmartVoice = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      toast.error("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
       return;
     }
 
@@ -75,29 +133,20 @@ export function TaskFormModal({
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    if (field === "title") setIsListeningTitle(true);
-    if (field === "description") setIsListeningDesc(true);
-    if (field === "notes") setIsListeningNotes(true);
-    if (field === "learnings") setIsListeningLearnings(true);
+    transcriptRef.current = "";
+    setVoiceTranscript("");
+    setIsListening(true);
 
     recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
+      const current = Array.from(event.results)
         .map((result: any) => result[0].transcript)
-        .join("");
-
-      if (field === "title") {
-        setTitle(transcript);
-      } else if (field === "description") {
-        setDescription(transcript);
-      } else if (field === "notes") {
-        setNotes(transcript);
-      } else if (field === "learnings") {
-        setLearnings(transcript);
-      }
+        .join(" ");
+      transcriptRef.current = current;
+      setVoiceTranscript(current);
     };
 
     recognition.onerror = (event: any) => {
@@ -105,33 +154,30 @@ export function TaskFormModal({
       if (event.error !== "no-speech") {
         toast.error(`Voice error: ${event.error}`);
       }
-      setIsListeningTitle(false);
-      setIsListeningDesc(false);
-      setIsListeningNotes(false);
-      setIsListeningLearnings(false);
+      setIsListening(false);
     };
 
     recognition.onend = () => {
-      setIsListeningTitle(false);
-      setIsListeningDesc(false);
-      setIsListeningNotes(false);
-      setIsListeningLearnings(false);
+      setIsListening(false);
+      if (transcriptRef.current.trim()) {
+        processVoiceTranscript(transcriptRef.current);
+      }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    toast.info("Listening... Speak now", { duration: 2500 });
+    toast.info("🎙️ Listening... Tell me your entire task, workplace, time, and progress!", { duration: 4000 });
   };
 
-  const stopVoiceInput = () => {
+  const stopSmartVoice = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-    setIsListeningTitle(false);
-    setIsListeningDesc(false);
-    setIsListeningNotes(false);
-    setIsListeningLearnings(false);
+    setIsListening(false);
+    if (transcriptRef.current.trim()) {
+      processVoiceTranscript(transcriptRef.current);
+    }
   };
 
   React.useEffect(() => {
@@ -273,6 +319,84 @@ export function TaskFormModal({
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        {/* ONE-TOUCH SMART AI VOICE ASSISTANT */}
+        <div
+          className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+            isListening
+              ? "border-rose-500 bg-rose-500/10 shadow-lg ring-2 ring-rose-500/30 animate-pulse"
+              : isProcessingVoice
+              ? "border-violet-500 bg-violet-500/10 shadow-md animate-pulse"
+              : "border-primary/30 bg-gradient-to-r from-primary/10 via-violet-500/10 to-cyan-500/10 shadow-sm hover:border-primary/50"
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2.5 rounded-xl flex items-center justify-center shrink-0 ${
+                  isListening
+                    ? "bg-rose-500 text-white animate-bounce shadow-md"
+                    : isProcessingVoice
+                    ? "bg-violet-600 text-white shadow-md"
+                    : "bg-primary text-primary-foreground shadow"
+                }`}
+              >
+                {isProcessingVoice ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="h-5 w-5" />
+                ) : (
+                  <Sparkles className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                  <span>Smart AI Voice Auto-Fill</span>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                    One Speak = All Filled
+                  </span>
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isListening
+                    ? "Listening... Speak your workplace, task, timing, priority, and learnings."
+                    : isProcessingVoice
+                    ? "AI is analyzing and filling every field..."
+                    : "Speak naturally in one go — AI understands and fills every space!"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {isListening ? (
+                <button
+                  type="button"
+                  onClick={stopSmartVoice}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  <span>Stop & Auto-Fill</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isProcessingVoice}
+                  onClick={startSmartVoice}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <Mic className="h-3.5 w-3.5" />
+                  <span>Tap to Speak & Auto-Fill</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {voiceTranscript && (
+            <div className="mt-3 pt-2.5 border-t border-border/40 text-xs text-foreground/80 bg-background/60 rounded-lg p-2.5 italic">
+              <span className="font-semibold text-primary not-italic">Recognized Speech: </span>
+              &ldquo;{voiceTranscript}&rdquo;
+            </div>
+          )}
+        </div>
+
         {/* Workplace Selection */}
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -309,24 +433,9 @@ export function TaskFormModal({
 
         {/* Title */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Task Title *
-            </label>
-            <button
-              type="button"
-              onClick={() => isListeningTitle ? stopVoiceInput() : startVoiceInput("title")}
-              className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
-                isListeningTitle
-                  ? "bg-red-500 text-white animate-pulse shadow-md"
-                  : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-              title="Click to speak task title"
-            >
-              {isListeningTitle ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-              <span>{isListeningTitle ? "Listening..." : "Speak Title"}</span>
-            </button>
-          </div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            Task Title *
+          </label>
           <input
             type="text"
             required
@@ -339,29 +448,14 @@ export function TaskFormModal({
 
         {/* Description */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Detailed Description
-            </label>
-            <button
-              type="button"
-              onClick={() => isListeningDesc ? stopVoiceInput() : startVoiceInput("description")}
-              className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
-                isListeningDesc
-                  ? "bg-red-500 text-white animate-pulse shadow-md"
-                  : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-              title="Click to speak description"
-            >
-              {isListeningDesc ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-              <span>{isListeningDesc ? "Listening..." : "Speak Description"}</span>
-            </button>
-          </div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            Detailed Description
+          </label>
           <textarea
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What exact deliverables or milestones were worked on? (Or click Speak Description)"
+            placeholder="What exact deliverables or milestones were worked on?"
             className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
         </div>
@@ -474,24 +568,9 @@ export function TaskFormModal({
         {/* Notes & Learnings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Notes / Blockers
-              </label>
-              <button
-                type="button"
-                onClick={() => isListeningNotes ? stopVoiceInput() : startVoiceInput("notes")}
-                className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
-                  isListeningNotes
-                    ? "bg-red-500 text-white animate-pulse shadow-md"
-                    : "bg-primary/10 text-primary hover:bg-primary/20"
-                }`}
-                title="Click to speak notes"
-              >
-                {isListeningNotes ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                <span>{isListeningNotes ? "Listening..." : "Speak Notes"}</span>
-              </button>
-            </div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Notes / Blockers
+            </label>
             <textarea
               rows={2}
               value={notes}
@@ -502,24 +581,9 @@ export function TaskFormModal({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Learnings & Insights
-              </label>
-              <button
-                type="button"
-                onClick={() => isListeningLearnings ? stopVoiceInput() : startVoiceInput("learnings")}
-                className={`flex items-center gap-1.5 text-xs sm:text-[11px] font-bold px-3 py-1 sm:py-0.5 rounded-full transition-all active:scale-95 ${
-                  isListeningLearnings
-                    ? "bg-red-500 text-white animate-pulse shadow-md"
-                    : "bg-primary/10 text-primary hover:bg-primary/20"
-                }`}
-                title="Click to speak learnings & insights"
-              >
-                {isListeningLearnings ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                <span>{isListeningLearnings ? "Listening..." : "Speak Insights"}</span>
-              </button>
-            </div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Learnings & Insights
+            </label>
             <textarea
               rows={2}
               value={learnings}
