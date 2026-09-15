@@ -7,6 +7,7 @@ import {
   generateMonthlyReport,
 } from "@/lib/ai-service";
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { calculateDuration } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   const session = await getSessionFromRequest(req);
@@ -34,9 +35,14 @@ export async function POST(req: NextRequest) {
 
     if (type === "DAILY") {
       title = `Daily Work Report – ${format(baseDate, "MMMM d, yyyy")}`;
-      const tasks = await prisma.workLog.findMany({
+      const rawTasks = await prisma.workLog.findMany({
         where: { userId, date: dateStr },
+        orderBy: [{ startTime: "asc" }],
       });
+      const tasks = rawTasks.map((t) => ({
+        ...t,
+        durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
+      }));
       const journals = await prisma.journal.findMany({
         where: { userId, date: dateStr },
       });
@@ -55,12 +61,17 @@ export async function POST(req: NextRequest) {
       periodEnd = format(e, "yyyy-MM-dd");
       title = `Weekly Productivity Report – Week of ${format(s, "MMM d, yyyy")}`;
 
-      const tasks = await prisma.workLog.findMany({
+      const rawTasks = await prisma.workLog.findMany({
         where: {
           userId,
           date: { gte: periodStart, lte: periodEnd },
         },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
       });
+      const tasks = rawTasks.map((t) => ({
+        ...t,
+        durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
+      }));
 
       const res = await generateWeeklyReport(tasks, periodStart, periodEnd);
       content = res.summary;
@@ -75,12 +86,17 @@ export async function POST(req: NextRequest) {
       const monthName = format(baseDate, "MMMM yyyy");
       title = `Monthly Performance Review – ${monthName}`;
 
-      const tasks = await prisma.workLog.findMany({
+      const rawTasks = await prisma.workLog.findMany({
         where: {
           userId,
           date: { gte: periodStart, lte: periodEnd },
         },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
       });
+      const tasks = rawTasks.map((t) => ({
+        ...t,
+        durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
+      }));
 
       const res = await generateMonthlyReport(tasks, monthName);
       content = res.summary;

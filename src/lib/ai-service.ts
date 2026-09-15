@@ -4,10 +4,11 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
-interface TaskItem {
+export interface TaskItem {
   id: string;
   title: string;
   description: string;
+  organization?: string;
   category: string;
   date: string;
   startTime: string;
@@ -20,11 +21,75 @@ interface TaskItem {
   tags?: string | null;
 }
 
-interface JournalItem {
+export interface JournalItem {
   date: string;
   reflection: string;
   learnings?: string | null;
   actionItems?: string | null;
+}
+
+function getTaskMinutes(t: TaskItem): number {
+  if (t.durationMinutes && t.durationMinutes > 0) return t.durationMinutes;
+  if (!t.startTime || !t.endTime) return 60;
+  const [sH, sM] = t.startTime.split(":").map(Number);
+  const [eH, eM] = t.endTime.split(":").map(Number);
+  if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 60;
+  let mins = (eH * 60 + eM) - (sH * 60 + sM);
+  if (mins <= 0) mins += 24 * 60;
+  return mins;
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function buildExactItemizedAudit(tasks: TaskItem[]): string {
+  if (!tasks.length) return "*No work entries recorded for this period.*";
+
+  const byDate: Record<string, TaskItem[]> = {};
+  tasks.forEach((t) => {
+    const d = t.date || "Unspecified Date";
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(t);
+  });
+
+  const sortedDates = Object.keys(byDate).sort();
+  return sortedDates
+    .map((dateStr) => {
+      const dayTasks = byDate[dateStr];
+      const dayTotalMins = dayTasks.reduce((sum, t) => sum + getTaskMinutes(t), 0);
+
+      const taskEntries = dayTasks
+        .map((t, idx) => {
+          const org = t.organization || "Galactic 3D";
+          const orgIcon = org.includes("Cambridge") ? "🎓" : "🚀";
+          const dur = formatDuration(getTaskMinutes(t));
+
+          let block = `#### ${idx + 1}. ${orgIcon} [${org}] ${t.title}\n`;
+          block += `- **Time & Duration:** ${t.startTime || "09:00"} – ${t.endTime || "10:30"} (${dur})\n`;
+          block += `- **Category:** ${t.category || "Development"} | **Priority:** ${t.priority || "MEDIUM"} | **Status:** ${t.status || "COMPLETED"}\n`;
+          block += `- **Deliverable Description:** ${t.description || "Work deliverables completed."}\n`;
+
+          if (t.notes && t.notes.trim()) {
+            block += `- **Notes / Blockers:** ${t.notes.trim()}\n`;
+          }
+          if (t.learnings && t.learnings.trim()) {
+            block += `- **Learnings & Key Insights:** ${t.learnings.trim()}\n`;
+          }
+          if (t.tags && t.tags.trim()) {
+            block += `- **Tags:** \`${t.tags.trim()}\`\n`;
+          }
+          return block;
+        })
+        .join("\n");
+
+      return `### 📅 Date: ${dateStr} (Total: ${formatDuration(dayTotalMins)} | ${dayTasks.length} ${dayTasks.length === 1 ? "task" : "tasks"})\n\n${taskEntries}`;
+    })
+    .join("\n\n---\n\n");
 }
 
 export async function generateDailySummary(
@@ -40,98 +105,113 @@ export async function generateDailySummary(
 }> {
   const completedTasks = tasks.filter((t) => t.status === "COMPLETED");
   const pendingTasksList = tasks.filter((t) => t.status !== "COMPLETED");
-  const totalMinutes = tasks.reduce((sum, t) => sum + (t.durationMinutes || 0), 0);
+  const totalMinutes = tasks.reduce((sum, t) => sum + getTaskMinutes(t), 0);
   const hoursWorked = +(totalMinutes / 60).toFixed(1);
 
   const categoryBreakdown: Record<string, number> = {};
   tasks.forEach((t) => {
     categoryBreakdown[t.category] =
-      (categoryBreakdown[t.category] || 0) + (t.durationMinutes || 0);
+      (categoryBreakdown[t.category] || 0) + getTaskMinutes(t);
   });
 
-  // If OpenAI key is configured, prompt gpt-4o
+  const galacticTasks = tasks.filter((t) => (t.organization || "").includes("Galactic"));
+  const galacticMins = galacticTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
+
+  const cambridgeTasks = tasks.filter((t) => (t.organization || "").includes("Cambridge"));
+  const cambridgeMins = cambridgeTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
+
+  const itemizedAudit = buildExactItemizedAudit(tasks);
+
   if (openai) {
     try {
-      const prompt = `You are WorkTrail AI's intelligent executive productivity reporter.
-Analyze the following workday data:
-Completed Tasks (${completedTasks.length}):
-${completedTasks.map((t) => `- [${t.category}] ${t.title} (${t.durationMinutes}m, Priority: ${t.priority}): ${t.description}`).join("\n")}
+      const prompt = `You are WorkTrail AI. Generate an EXACT, factual Daily Work Summary based strictly on the tasks below:
 
-Pending Tasks (${pendingTasksList.length}):
-${pendingTasksList.map((t) => `- [${t.category}] ${t.title} (Status: ${t.status})`).join("\n")}
+CRITICAL RULE:
+- Only describe what is explicitly written in the tasks data.
+- DO NOT invent, hallucinate, or assume any deliverables, hypothetical meetings, or corporate fluff.
+- Be exact, clear, and professional.
 
-Journals/Learnings:
-${journals.map((j) => `- Reflection: ${j.reflection}. Learnings: ${j.learnings || "N/A"}`).join("\n")}
+DATA:
+- Total Time: ${hoursWorked} hrs across ${tasks.length} tasks (${completedTasks.length} completed, ${pendingTasksList.length} in progress)
+- Workplace Breakdown: Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h (${galacticTasks.length} tasks), Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h (${cambridgeTasks.length} tasks)
 
-Generate a comprehensive, executive-ready Daily Work Summary in clean Markdown format.
-Include:
-1. Executive Overview
-2. Key Milestones & Completed Deliverables
-3. Category & Time Allocation
-4. Roadblocks & Pending Priorities for Tomorrow
-5. Key Learnings & Strategic Takeaways`;
+EXACT TASKS:
+${tasks.map((t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] "${t.title}" (${t.startTime}-${t.endTime}, ${t.category}, Status: ${t.status}):
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+${journals.length > 0 ? `JOURNALS:\n${journals.map((j) => `- Reflection: ${j.reflection}`).join("\n")}` : ""}
+
+Provide a clean, executive summary strictly highlighting the real deliverables above.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
+        temperature: 0.3,
       });
 
       const text = response.choices[0]?.message?.content;
       if (text) {
+        const fullReport = `${text}\n\n---\n\n## 📝 Exact Itemized Daily Audit\n\n${itemizedAudit}`;
         return {
-          summary: text,
+          summary: fullReport,
           hoursWorked,
           tasksCompleted: completedTasks.length,
           categoryBreakdown,
-          keyAchievements: completedTasks.slice(0, 3).map((t) => t.title),
+          keyAchievements: completedTasks.map((t) => `[${t.organization || "Galactic 3D"}] ${t.title}`),
           pendingTasks: pendingTasksList.map((t) => t.title),
         };
       }
     } catch (error) {
-      console.warn("OpenAI API call failed, falling back to smart local summary engine:", error);
+      console.warn("OpenAI API call failed, falling back to exact local summary engine:", error);
     }
   }
 
-  // Smart local generation fallback
-  const achievements = completedTasks.map((t) => `**${t.title}**: ${t.description.slice(0, 120)}...`);
-  const pending = pendingTasksList.map((t) => `${t.title} (${t.status.replace("_", " ")})`);
+  // Exact local summary fallback
+  const achievements = completedTasks.map(
+    (t, idx) => `${idx + 1}. **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.startTime} - ${t.endTime}, ${t.category}): ${t.description}`
+  );
+  const pending = pendingTasksList.map(
+    (t) => `- 📌 **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.status.replace("_", " ")}): ${t.description}`
+  );
 
   const categoryLines = Object.entries(categoryBreakdown)
-    .map(([cat, mins]) => `* **${cat}**: ${Math.floor(mins / 60)}h ${mins % 60}m (${Math.round((mins / (totalMinutes || 1)) * 100)}%)`)
+    .map(([cat, mins]) => `* **${cat}**: ${formatDuration(mins)} (${Math.round((mins / (totalMinutes || 1)) * 100)}%)`)
     .join("\n");
 
-  const reflectionText = journals.length > 0
-    ? `\n\n### 💡 Reflection & Daily Learnings\n${journals.map((j) => `> ${j.reflection}\n${j.learnings ? `*Learnings:* ${j.learnings}` : ""}`).join("\n\n")}`
-    : "";
+  const allLearnings = tasks.filter((t) => t.learnings && t.learnings.trim()).map((t) => `- **${t.title}:** ${t.learnings!.trim()}`);
+  const allNotes = tasks.filter((t) => t.notes && t.notes.trim()).map((t) => `- **${t.title}:** ${t.notes!.trim()}`);
 
-  const markdown = `## 📋 Daily Productivity & Work Report
-*Generated by WorkTrail AI Engine*
+  const markdown = `## 📋 Exact Daily Productivity & Work Report
 
-### 🚀 Executive Overview
-Today saw a total of **${hoursWorked} hours** logged across **${tasks.length} total activities**, with **${completedTasks.length} tasks completed** and **${pendingTasksList.length} items continuing in progress**.
+### 🚀 Overview
+- **Total Hours Logged:** ${hoursWorked} hrs (${formatDuration(totalMinutes)})
+- **Tasks Completed:** ${completedTasks.length} of ${tasks.length}
+- **🚀 Galactic 3D:** ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+- **🎓 Cambridge Institute of Technology:** ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
 
-### ⏱️ Category & Time Allocation
+### ⏱️ Category Breakdown
 ${categoryLines || "*No categorical breakdown available.*"}
 
-### 🏆 Key Accomplishments Today
-${achievements.length ? achievements.map((a) => `- ${a}`).join("\n") : "- Continued active progress on assigned deliverables."}
+### 🏆 Exact Deliverables Completed
+${achievements.length ? achievements.join("\n\n") : "- Continued active progress on assigned tasks."}
+${pending.length ? `\n\n### ⏳ In-Progress / Pending Tasks\n${pending.join("\n")}` : ""}
+${allLearnings.length ? `\n\n### 💡 Key Technical Learnings\n${allLearnings.join("\n")}` : ""}
+${allNotes.length ? `\n\n### ⚠️ Notes / Blockers Encountered\n${allNotes.join("\n")}` : ""}
 
-### ⏳ Pending & Follow-up Items for Tomorrow
-${pending.length ? pending.map((p) => `- 📌 ${p}`).join("\n") : "- All daily targets achieved for this log period!"}
-${reflectionText}
+---
 
-### 🎯 AI Recommendations
-- Maintain dedicated morning deep-work blocks for high-priority engineering tasks.
-- Keep updating detailed journal reflections to track continuous domain growth.`;
+## 📝 Exact Itemized Deliverables Audit
+${itemizedAudit}`;
 
   return {
     summary: markdown,
     hoursWorked,
     tasksCompleted: completedTasks.length,
     categoryBreakdown,
-    keyAchievements: completedTasks.slice(0, 3).map((t) => t.title),
-    pendingTasks: pending,
+    keyAchievements: completedTasks.map((t) => t.title),
+    pendingTasks: pendingTasksList.map((t) => t.title),
   };
 }
 
@@ -146,63 +226,102 @@ export async function generateWeeklyReport(
   productivityScore: number;
 }> {
   const completedTasks = tasks.filter((t) => t.status === "COMPLETED");
-  const totalMinutes = tasks.reduce((sum, t) => sum + (t.durationMinutes || 0), 0);
+  const inProgressTasks = tasks.filter((t) => t.status !== "COMPLETED");
+  const totalMinutes = tasks.reduce((sum, t) => sum + getTaskMinutes(t), 0);
   const hoursWorked = +(totalMinutes / 60).toFixed(1);
   const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 100;
-  const productivityScore = Math.min(98, Math.max(65, Math.round(completionRate * 0.7 + (hoursWorked / 40) * 30)));
+  const productivityScore = Math.min(100, Math.max(70, completionRate));
+
+  const galacticTasks = tasks.filter((t) => (t.organization || "").includes("Galactic"));
+  const galacticMins = galacticTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
+
+  const cambridgeTasks = tasks.filter((t) => (t.organization || "").includes("Cambridge"));
+  const cambridgeMins = cambridgeTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
+
+  const itemizedAudit = buildExactItemizedAudit(tasks);
+
+  const accomplishmentsList = completedTasks.length > 0
+    ? completedTasks.map((t, idx) => `${idx + 1}. **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.date} | ${t.startTime} - ${t.endTime}, ${t.category}): ${t.description}`).join("\n\n")
+    : "*No completed tasks recorded in this period.*";
+
+  const allLearnings = tasks.filter((t) => t.learnings && t.learnings.trim()).map((t) => `- **${t.title}:** ${t.learnings!.trim()}`);
+  const learningsSection = allLearnings.length > 0
+    ? `\n\n### 💡 Key Technical Learnings & Insights\n${allLearnings.join("\n")}`
+    : "";
+
+  const allNotes = tasks.filter((t) => t.notes && t.notes.trim()).map((t) => `- **${t.title}:** ${t.notes!.trim()}`);
+  const notesSection = allNotes.length > 0
+    ? `\n\n### ⚠️ Notes, Challenges & Blockers Encountered\n${allNotes.join("\n")}`
+    : "";
+
+  const pendingSection = inProgressTasks.length > 0
+    ? `\n\n### ⏳ In-Progress & Follow-Up Deliverables\n${inProgressTasks.map((t) => `- **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.date} | ${t.category} - Status: ${t.status}): ${t.description}`).join("\n")}`
+    : "";
 
   if (openai) {
     try {
-      const prompt = `You are WorkTrail AI. Generate a high-impact Weekly Performance Report for the period ${startDate} to ${endDate}.
-Data:
-- Total Tasks: ${tasks.length}
-- Completed Tasks: ${completedTasks.length}
-- Total Logged Hours: ${hoursWorked}
-- Tasks breakdown:
-${tasks.map((t) => `- [${t.category}] ${t.title} (${t.status}, ${t.durationMinutes} mins)`).join("\n")}
+      const prompt = `You are WorkTrail AI generating an EXACT, factual Weekly Work Report for ${startDate} to ${endDate}.
 
-Provide an executive report in Markdown including:
-1. Executive Summary & Weekly Score
-2. Category Breakdown & Resource Allocation
-3. Major Accomplishments & Key Milestones
-4. Velocity & Trend Analysis
-5. Next Week's Strategic Priorities`;
+CRITICAL INSTRUCTION:
+- You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
+- DO NOT invent, assume, or hallucinate any tasks, hypothetical projects, or generic corporate filler.
+- Be precise, professional, and 100% faithful to the user's recorded tasks.
+
+DATA:
+- Total Tasks: ${tasks.length} (Completed: ${completedTasks.length}, In Progress: ${inProgressTasks.length})
+- Total Tracked Time: ${hoursWorked} hrs
+- Workplace Split:
+  * Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+  * Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
+
+TASKS LOGGED:
+${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galactic 3D"}] "${t.title}" | Category: ${t.category} | Time: ${t.startTime}-${t.endTime} | Status: ${t.status}
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above.`;
 
       const res = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
       });
-      const content = res.choices[0]?.message?.content;
-      if (content) {
-        return { summary: content, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+      const aiOverview = res.choices[0]?.message?.content;
+      if (aiOverview) {
+        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Deliverables Audit\n\n${itemizedAudit}`;
+        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (e) {
       console.warn("OpenAI weekly report failed, fallback:", e);
     }
   }
 
-  const markdown = `## 📊 Weekly Performance & Progress Report
-**Period:** ${startDate} to ${endDate}
-**Productivity Rating:** ${productivityScore}/100 🌟
+  // Deterministic 100% exact report
+  const markdown = `## 📊 Executive Weekly Work Report
+**Period:** ${startDate} to ${endDate}  
+**Total Hours Logged:** ${hoursWorked} hrs | **Deliverables Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
 
-### 📈 Weekly Highlights
-- **Total Hours Invested:** ${hoursWorked} hrs
-- **Tasks Handled:** ${tasks.length}
-- **Successfully Completed:** ${completedTasks.length} (${completionRate}% velocity)
+---
 
-### 🧩 Work Distribution by Category
-- **Development & Technical Execution:** ${tasks.filter((t) => t.category === "Development").length} tasks
-- **Meetings & Collaboration:** ${tasks.filter((t) => t.category === "Meeting").length} tasks
-- **Research, Architecture & Design:** ${tasks.filter((t) => ["Research", "Design"].includes(t.category)).length} tasks
-- **Documentation & QA Reviews:** ${tasks.filter((t) => ["Documentation", "Review"].includes(t.category)).length} tasks
+### 🏢 Workplace Distribution
+- 🚀 **Galactic 3D:** **${+(galacticMins / 60).toFixed(1)} hrs** across ${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"}
+- 🎓 **Cambridge Institute of Technology:** **${+(cambridgeMins / 60).toFixed(1)} hrs** across ${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"}
 
-### 🎖️ Top Weekly Accomplishments
-${completedTasks.slice(0, 5).map((t) => `- **${t.title}**: Verified delivery with all attached documentation and notes.`).join("\n") || "- Completed all scheduled weekly milestones."}
+---
 
-### 💡 AI Productivity Insights & Velocity
-- Meeting load was well-balanced with core execution windows.
-- Consistency across the 5-day cycle maintained high output without late-stage crunch.
-- Recommended focus for next week: Pre-schedule client syncs to prevent mid-day context switching.`;
+### 🏆 Exact Completed Deliverables
+${accomplishmentsList}
+${pendingSection}
+${learningsSection}
+${notesSection}
+
+---
+
+## 📝 Exact Itemized Deliverables Audit
+*Below is the exact, unedited chronological log of every recorded activity, time span, deliverable details, and notes:*
+
+${itemizedAudit}`;
 
   return {
     summary: markdown,
@@ -222,30 +341,91 @@ export async function generateMonthlyReport(
   productivityScore: number;
 }> {
   const completedTasks = tasks.filter((t) => t.status === "COMPLETED");
-  const totalMinutes = tasks.reduce((sum, t) => sum + (t.durationMinutes || 0), 0);
+  const inProgressTasks = tasks.filter((t) => t.status !== "COMPLETED");
+  const totalMinutes = tasks.reduce((sum, t) => sum + getTaskMinutes(t), 0);
   const hoursWorked = +(totalMinutes / 60).toFixed(1);
-  const productivityScore = 92;
+  const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 100;
+  const productivityScore = Math.min(100, Math.max(75, completionRate));
 
-  const markdown = `## 🏆 Monthly Comprehensive Performance Review
-**Month:** ${monthName}
-**Overall Efficiency Index:** ${productivityScore}% | **Status:** Exceeding Expectations
+  const galacticTasks = tasks.filter((t) => (t.organization || "").includes("Galactic"));
+  const galacticMins = galacticTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
 
-### 🌟 Executive Impact Summary
-Throughout ${monthName}, an aggregate of **${hoursWorked} productive hours** were recorded across **${tasks.length} discrete initiatives**. The task completion rate reached **${Math.round((completedTasks.length / (tasks.length || 1)) * 100)}%**.
+  const cambridgeTasks = tasks.filter((t) => (t.organization || "").includes("Cambridge"));
+  const cambridgeMins = cambridgeTasks.reduce((s, t) => s + getTaskMinutes(t), 0);
 
-### 📊 Strategic KPI Dashboard
-- **Total Completed Deliverables:** ${completedTasks.length}
-- **High-Priority Initiatives Delivered:** ${completedTasks.filter((t) => t.priority === "HIGH").length}
-- **Collaborative/Meeting Hours Ratio:** 18% (Optimal for Deep Work)
-- **Documented Learnings & Evidence Records:** ${tasks.filter((t) => t.notes || t.learnings).length} verified entries
+  const itemizedAudit = buildExactItemizedAudit(tasks);
 
-### 🎯 Key Milestones Delivered
-${completedTasks.slice(0, 6).map((t) => `1. **${t.title}** (${t.category}) – *${t.description.slice(0, 100)}*`).join("\n") || "1. Core product milestones and backlog clearance."}
+  const accomplishmentsList = completedTasks.length > 0
+    ? completedTasks.map((t, idx) => `${idx + 1}. **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.date} | ${t.startTime} - ${t.endTime}, ${t.category}): ${t.description}`).join("\n\n")
+    : "*No completed tasks recorded in this month.*";
 
-### 🚀 Future Growth Recommendations
-- Continue documenting reusable technical patterns in the Work Journal.
-- Transition routine update syncs to asynchronous summaries using WorkTrail reports.
-- Scale research into AI-augmented workflow automation.`;
+  const allLearnings = tasks.filter((t) => t.learnings && t.learnings.trim()).map((t) => `- **${t.title}:** ${t.learnings!.trim()}`);
+  const allNotes = tasks.filter((t) => t.notes && t.notes.trim()).map((t) => `- **${t.title}:** ${t.notes!.trim()}`);
+
+  if (openai) {
+    try {
+      const prompt = `You are WorkTrail AI generating an EXACT, factual Monthly Work Review for ${monthName}.
+
+CRITICAL INSTRUCTION:
+- You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
+- DO NOT invent, assume, or hallucinate any tasks, hypothetical projects, or generic corporate filler.
+- Be precise, professional, and 100% faithful to the user's recorded tasks.
+
+DATA:
+- Month: ${monthName}
+- Total Tasks: ${tasks.length} (Completed: ${completedTasks.length}, In Progress: ${inProgressTasks.length})
+- Total Tracked Time: ${hoursWorked} hrs
+- Workplace Split:
+  * Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+  * Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
+
+TASKS LOGGED:
+${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galactic 3D"}] "${t.title}" | Category: ${t.category} | Time: ${t.startTime}-${t.endTime} | Status: ${t.status}
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+Provide an executive review strictly reflecting ONLY the exact deliverables above.`;
+
+      const res = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+      });
+      const aiOverview = res.choices[0]?.message?.content;
+      if (aiOverview) {
+        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Monthly Audit\n\n${itemizedAudit}`;
+        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+      }
+    } catch (e) {
+      console.warn("OpenAI monthly report failed, fallback:", e);
+    }
+  }
+
+  const markdown = `## 🏆 Exact Monthly Comprehensive Performance Review
+**Month:** ${monthName}  
+**Total Hours Logged:** ${hoursWorked} hrs | **Tasks Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
+
+---
+
+### 🏢 Workplace Distribution
+- 🚀 **Galactic 3D:** **${+(galacticMins / 60).toFixed(1)} hrs** across ${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"}
+- 🎓 **Cambridge Institute of Technology:** **${+(cambridgeMins / 60).toFixed(1)} hrs** across ${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"}
+
+---
+
+### 🎯 Key Deliverables Delivered
+${accomplishmentsList}
+${inProgressTasks.length > 0 ? `\n\n### ⏳ In-Progress Deliverables\n${inProgressTasks.map((t) => `- **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.date}): ${t.description}`).join("\n")}` : ""}
+${allLearnings.length > 0 ? `\n\n### 💡 Key Technical Learnings\n${allLearnings.join("\n")}` : ""}
+${allNotes.length > 0 ? `\n\n### ⚠️ Notes & Blockers Encountered\n${allNotes.join("\n")}` : ""}
+
+---
+
+## 📝 Exact Itemized Monthly Deliverables Audit
+*Below is the exact, unedited chronological log of every recorded activity in ${monthName}:*
+
+${itemizedAudit}`;
 
   return {
     summary: markdown,
