@@ -58,9 +58,10 @@ export function TaskFormModal({
   const [isUploading, setIsUploading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Single Smart Voice Auto-Fill State
+  // Single Summary & Voice Auto-Fill State
+  const [summaryInput, setSummaryInput] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
-  const [isProcessingVoice, setIsProcessingVoice] = React.useState(false);
+  const [isAutoFilling, setIsAutoFilling] = React.useState(false);
   const [voiceTranscript, setVoiceTranscript] = React.useState("");
   const recognitionRef = React.useRef<any>(null);
   const transcriptRef = React.useRef("");
@@ -79,43 +80,55 @@ export function TaskFormModal({
     if (data.tags) setTags(data.tags);
   };
 
-  const processVoiceTranscript = async (finalTranscript: string) => {
-    if (!finalTranscript || !finalTranscript.trim()) {
-      toast.info("No voice detected. Please try speaking again.");
+  const processSummaryAutoFill = async (textToProcess?: string) => {
+    const targetText = (typeof textToProcess === "string" ? textToProcess : summaryInput).trim();
+    if (!targetText) {
+      toast.info("Please paste or type a summary first, or tap the mic to speak.");
       return;
     }
 
-    setIsProcessingVoice(true);
-    toast.info("AI is analyzing your voice and filling the form...", { duration: 3000 });
+    setIsAutoFilling(true);
+    toast.info("AI is analyzing summary and auto-filling all spaces...", { duration: 3000 });
 
     try {
       // Call AI endpoint first
       const res = await fetch("/api/ai/parse-voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: finalTranscript }),
+        body: JSON.stringify({ summary: targetText, transcript: targetText }),
       });
 
       if (res.ok) {
         const result = await res.json();
         if (result && result.data) {
           applyParsedData(result.data);
-          toast.success("✨ All fields auto-filled from your voice!");
+          toast.success("✨ All form fields auto-filled successfully!");
           return;
         }
       }
 
-      // Fallback to local intelligent rule-based parser
-      const localParsed = parseVoiceLocally(finalTranscript);
+      // Fallback to intelligent local parser
+      const localParsed = parseVoiceLocally(targetText);
       applyParsedData(localParsed);
-      toast.success("✨ Auto-filled task details from your speech!");
+      toast.success("✨ Auto-filled all spaces from summary!");
     } catch (err: any) {
       console.warn("AI parsing fallback to local parser:", err);
-      const localParsed = parseVoiceLocally(finalTranscript);
+      const localParsed = parseVoiceLocally(targetText);
       applyParsedData(localParsed);
-      toast.success("✨ Auto-filled task details from speech!");
+      toast.success("✨ Auto-filled all spaces from summary!");
     } finally {
-      setIsProcessingVoice(false);
+      setIsAutoFilling(false);
+    }
+  };
+
+  const handleSummaryPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData("text");
+    if (pasted && pasted.trim()) {
+      setSummaryInput(pasted);
+      // Auto-trigger parsing on paste for instantaneous 1-step workflow
+      setTimeout(() => {
+        processSummaryAutoFill(pasted);
+      }, 50);
     }
   };
 
@@ -147,6 +160,7 @@ export function TaskFormModal({
         .join(" ");
       transcriptRef.current = current;
       setVoiceTranscript(current);
+      setSummaryInput(current);
     };
 
     recognition.onerror = (event: any) => {
@@ -160,13 +174,13 @@ export function TaskFormModal({
     recognition.onend = () => {
       setIsListening(false);
       if (transcriptRef.current.trim()) {
-        processVoiceTranscript(transcriptRef.current);
+        processSummaryAutoFill(transcriptRef.current);
       }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    toast.info("🎙️ Listening... Tell me your entire task, workplace, time, and progress!", { duration: 4000 });
+    toast.info("🎙️ Listening... Speak your workplace, task, times, and takeaways!", { duration: 4000 });
   };
 
   const stopSmartVoice = () => {
@@ -176,7 +190,7 @@ export function TaskFormModal({
     }
     setIsListening(false);
     if (transcriptRef.current.trim()) {
-      processVoiceTranscript(transcriptRef.current);
+      processSummaryAutoFill(transcriptRef.current);
     }
   };
 
@@ -319,58 +333,110 @@ export function TaskFormModal({
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-        {/* ONE-TOUCH SMART AI VOICE ASSISTANT */}
+        {/* DUAL SMART AI QUICK AUTO-FILL (COPY-PASTE SUMMARY & VOICE) */}
         <div
           className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
             isListening
               ? "border-rose-500 bg-rose-500/10 shadow-lg ring-2 ring-rose-500/30 animate-pulse"
-              : isProcessingVoice
-              ? "border-violet-500 bg-violet-500/10 shadow-md animate-pulse"
+              : isAutoFilling
+              ? "border-primary bg-primary/10 shadow-md animate-pulse"
               : "border-primary/30 bg-gradient-to-r from-primary/10 via-violet-500/10 to-cyan-500/10 shadow-sm hover:border-primary/50"
           }`}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
               <div
-                className={`p-2.5 rounded-xl flex items-center justify-center shrink-0 ${
+                className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${
                   isListening
                     ? "bg-rose-500 text-white animate-bounce shadow-md"
-                    : isProcessingVoice
-                    ? "bg-violet-600 text-white shadow-md"
+                    : isAutoFilling
+                    ? "bg-primary text-primary-foreground shadow-md animate-spin"
                     : "bg-primary text-primary-foreground shadow"
                 }`}
               >
-                {isProcessingVoice ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                {isAutoFilling ? (
+                  <Loader2 className="h-4 w-4" />
                 ) : isListening ? (
-                  <MicOff className="h-5 w-5" />
+                  <MicOff className="h-4 w-4" />
                 ) : (
-                  <Sparkles className="h-5 w-5" />
+                  <Sparkles className="h-4 w-4" />
                 )}
               </div>
               <div>
-                <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
-                  <span>Smart AI Voice Auto-Fill</span>
+                <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                  <span>Smart AI Quick Auto-Fill</span>
                   <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary">
-                    One Speak = All Filled
+                    Paste or Speak = All Spaces Filled
                   </span>
                 </h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                   {isListening
-                    ? "Listening... Speak your workplace, task, timing, priority, and learnings."
-                    : isProcessingVoice
-                    ? "AI is analyzing and filling every field..."
-                    : "Speak naturally in one go — AI understands and fills every space!"}
+                    ? "Listening... Speak your workplace, task, times, priority, and progress!"
+                    : isAutoFilling
+                    ? "AI is analyzing and populating every space below..."
+                    : "Paste any raw summary, message, or notes — or speak — and AI fills every field automatically!"}
                 </p>
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+          {/* SINGLE SUMMARY / DESCRIPTION INPUT */}
+          <div className="relative mt-2">
+            <textarea
+              rows={2}
+              value={summaryInput}
+              onChange={(e) => setSummaryInput(e.target.value)}
+              onPaste={handleSummaryPaste}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  processSummaryAutoFill();
+                }
+              }}
+              placeholder="📋 Paste your single summary or description here (e.g. 'Electric 3D was there today so was working on meetings with Bass Aerospace and also figuring out previous orders and tracking them')..."
+              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-border/80 bg-background/90 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y shadow-inner"
+            />
+          </div>
+
+          {/* ACTION BUTTONS: AUTO-FILL ALL SPACES + SPEAK */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-1">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isAutoFilling || !summaryInput.trim()}
+                onClick={() => processSummaryAutoFill(summaryInput)}
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+              >
+                {isAutoFilling ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Auto-Filling All Spaces...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-3.5 w-3.5" />
+                    <span>✨ Auto-Fill All Spaces</span>
+                  </>
+                )}
+              </button>
+
+              {summaryInput.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSummaryInput("")}
+                  className="px-2.5 py-2 rounded-xl border border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
               {isListening ? (
                 <button
                   type="button"
                   onClick={stopSmartVoice}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <Square className="h-3.5 w-3.5 fill-current" />
                   <span>Stop & Auto-Fill</span>
@@ -378,19 +444,19 @@ export function TaskFormModal({
               ) : (
                 <button
                   type="button"
-                  disabled={isProcessingVoice}
+                  disabled={isAutoFilling}
                   onClick={startSmartVoice}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl border border-primary/40 bg-card hover:bg-accent text-foreground font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  <Mic className="h-3.5 w-3.5" />
-                  <span>Tap to Speak & Auto-Fill</span>
+                  <Mic className="h-3.5 w-3.5 text-rose-500" />
+                  <span>Tap to Speak</span>
                 </button>
               )}
             </div>
           </div>
 
           {voiceTranscript && (
-            <div className="mt-3 pt-2.5 border-t border-border/40 text-xs text-foreground/80 bg-background/60 rounded-lg p-2.5 italic">
+            <div className="mt-2.5 pt-2 border-t border-border/40 text-[11px] sm:text-xs text-foreground/80 bg-background/60 rounded-lg p-2 italic">
               <span className="font-semibold text-primary not-italic">Recognized Speech: </span>
               &ldquo;{voiceTranscript}&rdquo;
             </div>

@@ -18,44 +18,46 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   const lower = text.toLowerCase();
   const today = new Date().toISOString().split("T")[0];
 
-  // 1. Organization
+  // 1. Organization Detection (handles speech recognition variants & typos like "electric 3D")
   let organization = "Galactic 3D";
-  if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic/i.test(lower)) {
+  if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic|syllabus|curriculum|lab/i.test(lower)) {
     organization = "Cambridge Institute of Technology";
-  } else if (/galactic|3d|g3d|blender|three\s*js|webgl|unity|render|model/i.test(lower)) {
+  } else if (/galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|order|tracking/i.test(lower)) {
     organization = "Galactic 3D";
   }
 
-  // 2. Category
+  // 2. Category Detection
   let category = "Development";
-  if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets)\b/i.test(lower)) {
-    category = "Design";
-  } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading)\b/i.test(lower)) {
-    category = "Research";
-  } else if (/\b(meet|meeting|call|sync|discussion|standup|client|huddle|interview)\b/i.test(lower)) {
+  if (/\b(meet|meeting|meetings|call|sync|discussion|standup|client|huddle|interview|touchpoint|bass\s*aerospace)\b/i.test(lower)) {
     category = "Meeting";
+  } else if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets|shader|texture)\b/i.test(lower)) {
+    category = "Design";
+  } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading|feasibility)\b/i.test(lower)) {
+    category = "Research";
   } else if (/\b(test|testing|qa|verify|validation|cypress|jest|audit)\b/i.test(lower)) {
     category = "Testing";
-  } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report)\b/i.test(lower)) {
+  } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report|specification)\b/i.test(lower)) {
     category = "Documentation";
-  } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor)\b/i.test(lower)) {
+  } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor|orders|tracking|browser)\b/i.test(lower)) {
     category = "Development";
   }
 
-  // 3. Priority
+  // 3. Priority Detection
   let priority: "HIGH" | "MEDIUM" | "LOW" = "MEDIUM";
-  if (/\b(urgent|critical|high priority|asap|important|blocker|crucial|p0|p1)\b/i.test(lower)) {
+  if (/\b(urgent|critical|high priority|asap|important|blocker|crucial|p0|p1|deadline)\b/i.test(lower)) {
     priority = "HIGH";
   } else if (/\b(low priority|minor|trivial|optional|whenever|p3|p4)\b/i.test(lower)) {
     priority = "LOW";
   }
 
-  // 4. Status
+  // 4. Status Detection
   let status: "COMPLETED" | "IN_PROGRESS" | "PENDING" = "COMPLETED";
-  if (/\b(in progress|working on|still doing|started|underway|ongoing|halfway)\b/i.test(lower)) {
+  if (/\b(in progress|still doing|underway|halfway|currently working)\b/i.test(lower)) {
     status = "IN_PROGRESS";
   } else if (/\b(pending|todo|to do|will do|scheduled|planned|next)\b/i.test(lower)) {
     status = "PENDING";
+  } else if (/\b(done|finished|completed|resolved|wrapped up|attended|shipped|fixed|was working on)\b/i.test(lower)) {
+    status = "COMPLETED";
   }
 
   // 5. Time extraction (e.g. "from 9 to 11", "10am to 12pm", "10 to 1")
@@ -99,25 +101,62 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   }
 
   // 8. Tags Extraction
+  const detectedTags: string[] = [];
+  if (/bass\s*aerospace|aerospace/i.test(lower)) detectedTags.push("Bass Aerospace");
+  if (/orders?|tracking/i.test(lower)) detectedTags.push("Order Tracking");
+  if (/meeting|call|sync/i.test(lower)) detectedTags.push("Meeting");
+  if (/browser/i.test(lower)) detectedTags.push("Browser Integration");
+  if (/cambridge|student|exam|class/i.test(lower)) detectedTags.push("Cambridge");
+  if (/galactic|3d/i.test(lower)) detectedTags.push("Galactic 3D");
+
   const commonTech = [
     "react", "nextjs", "typescript", "javascript", "tailwind", "css", "mongodb",
     "prisma", "threejs", "webgl", "blender", "python", "api", "auth", "docker",
     "node", "jwt", "sql", "git", "figma", "ui", "ux", "redux"
   ];
-  const detectedTags = commonTech.filter((t) => lower.includes(t));
-  const tags = detectedTags.join(", ");
+  commonTech.forEach((t) => {
+    if (lower.includes(t)) detectedTags.push(t.toUpperCase());
+  });
+  const tags = Array.from(new Set(detectedTags)).join(", ");
 
-  // 9. Title & Description
+  // 9. Intelligent Title Generation
   let title = "";
-  const firstSentence = text.split(/[.!?\n]/)[0].trim();
-  const cleanTitle = firstSentence
-    .replace(/^(i worked on|i built|i did|worked on|working on|today i|spent time on|for galactic 3d|for cambridge)\s+/i, "")
-    .replace(/\s+(from|between)\s+\d+.*$/i, "");
 
-  if (cleanTitle.length > 4 && cleanTitle.length < 75) {
-    title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+  // Check specific high-signal cues first
+  if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
+    title = "Meeting with Bass Aerospace & Order Tracking";
+  } else if (/bass\s*aerospace/i.test(lower)) {
+    title = "Meeting with Bass Aerospace";
   } else {
-    title = `${category} Deliverables - ${organization.split(" ")[0]}`;
+    // Strip common speech/typing prefixes
+    let clean = text
+      .replace(/^(electric\s*3d|galactic\s*3d|cambridge)\s*(was there today|today|there today)?\s*(so was|so i was|i was|was)?\s*/i, "")
+      .replace(/^(today\s*i\s*(was|worked|built|did|spent time on)|working on|worked on|i was working on|i did|spent time on|handled)\s+/i, "")
+      .replace(/\s+(from|between)\s+\d+.*$/i, "")
+      .trim();
+
+    // Clean conversational filler words
+    clean = clean.replace(/\b(and also like|also like|like figureing out|figureing out|figuring out)\b/gi, "& review");
+
+    // Take the first clean clause or line
+    const firstLine = clean.split(/[\n.]/)[0].trim();
+    if (firstLine.length >= 5 && firstLine.length <= 80) {
+      // Capitalize first letter of words
+      title = firstLine
+        .split(" ")
+        .map((w) => w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+        .join(" ");
+    } else if (clean.length >= 5) {
+      const words = clean.split(" ").slice(0, 7).join(" ");
+      title = words.charAt(0).toUpperCase() + words.slice(1);
+    } else {
+      title = `${category} Task - ${organization.split(" ")[0]}`;
+    }
+  }
+
+  // Ensure title length is concise & clean
+  if (title.length > 70) {
+    title = title.substring(0, 67) + "...";
   }
 
   return {

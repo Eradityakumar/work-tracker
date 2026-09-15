@@ -3,16 +3,17 @@ import { parseVoiceWorkLog } from "@/lib/ai-service";
 
 export async function POST(req: NextRequest) {
   try {
-    const { transcript } = await req.json();
+    const body = await req.json();
+    const rawInput = body.transcript || body.summary || body.text;
 
-    if (!transcript || typeof transcript !== "string") {
+    if (!rawInput || typeof rawInput !== "string") {
       return NextResponse.json(
-        { error: "Please provide a voice transcript" },
+        { error: "Please provide a work summary or voice transcript" },
         { status: 400 }
       );
     }
 
-    const parsed = await parseVoiceWorkLog(transcript);
+    const parsed = await parseVoiceWorkLog(rawInput);
     return NextResponse.json({ success: true, data: parsed });
   } catch (err: any) {
     console.error("Parse voice error:", err);

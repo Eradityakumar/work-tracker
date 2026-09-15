@@ -515,40 +515,73 @@
       </div>
 
       <form id="workForm" onsubmit="handleFormSubmit(event)" class="p-4 sm:p-6 space-y-4">
-        <!-- SINGLE SMART AI VOICE ASSISTANT BANNER -->
+        <!-- DUAL SMART AI QUICK AUTO-FILL (COPY-PASTE SUMMARY & VOICE) -->
         <div id="smartVoiceCard" class="p-3.5 sm:p-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-blue-50/70 transition-all shadow-sm">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <div id="smartVoiceIconBox" class="p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow">
-                <i data-lucide="sparkles" id="smartVoiceIcon" class="w-5 h-5"></i>
+          <div class="flex items-center justify-between gap-3 mb-2">
+            <div class="flex items-center gap-2.5">
+              <div id="smartVoiceIconBox" class="p-2 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow">
+                <i data-lucide="sparkles" id="smartVoiceIcon" class="w-4 h-4"></i>
               </div>
               <div>
                 <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
-                  <span>Smart AI Voice Auto-Fill</span>
+                  <span>Smart AI Quick Auto-Fill</span>
                   <span class="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                    One Speak = All Filled
+                    Paste or Speak = All Spaces Filled
                   </span>
                 </h4>
-                <p id="smartVoiceSubtitle" class="text-xs text-slate-500 mt-0.5">
-                  Speak naturally in one go — AI understands and fills every field!
+                <p id="smartVoiceSubtitle" class="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                  Paste any raw summary or speak — AI fills every space automatically!
                 </p>
               </div>
             </div>
+          </div>
 
-            <div class="flex items-center gap-2 shrink-0">
+          <!-- SINGLE SUMMARY / DESCRIPTION INPUT -->
+          <div class="relative mt-2">
+            <textarea
+              id="smartSummaryInput"
+              rows="2"
+              onpaste="handleSummaryInputPaste(event)"
+              placeholder="📋 Paste your single summary or description here (or click Speak)... e.g. 'Electric 3D was there today so was working on meetings with Bass Aerospace and also figuring out previous orders and tracking them'"
+              class="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white/90 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all resize-y shadow-inner"
+            ></textarea>
+          </div>
+
+          <!-- ACTION BUTTONS: AUTO-FILL ALL SPACES + SPEAK -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-1">
+            <div class="flex items-center gap-2">
+              <button 
+                type="button" 
+                id="smartAutoFillBtn"
+                onclick="triggerManualSummaryAutoFill()" 
+                class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
+                <span>✨ Auto-Fill All Spaces</span>
+              </button>
+              <button 
+                type="button" 
+                onclick="clearSmartSummaryInput()" 
+                class="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
               <button 
                 type="button" 
                 id="smartVoiceActionBtn"
                 onclick="toggleSmartVoiceAutoFill()" 
-                class="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+                class="px-3.5 py-2 rounded-xl border border-indigo-300 bg-white hover:bg-indigo-50 text-slate-800 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
               >
-                <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                <i data-lucide="mic" class="w-3.5 h-3.5 text-rose-500"></i>
                 <span id="smartVoiceActionText">Tap to Speak</span>
               </button>
             </div>
           </div>
 
-          <div id="smartVoiceTranscriptBox" class="hidden mt-3 pt-2.5 border-t border-indigo-100 text-xs text-slate-700 bg-white/70 rounded-lg p-2.5 italic">
+          <div id="smartVoiceTranscriptBox" class="hidden mt-2.5 pt-2 border-t border-indigo-100 text-[11px] sm:text-xs text-slate-700 bg-white/70 rounded-lg p-2 italic">
             <span class="font-bold text-indigo-600 not-italic">Recognized: </span>
             <span id="smartVoiceTranscriptText"></span>
           </div>
@@ -1538,39 +1571,39 @@
       const lower = text.toLowerCase();
       const today = new Date().toISOString().split("T")[0];
 
-      // Organization
+      // 1. Organization Detection (handles speech variants & typos like "electric 3D")
       let organization = "Galactic 3D";
-      if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic/i.test(lower)) {
+      if (/cambridge|cit|institute|college|class|lecture|exam|student|faculty|campus|academic|syllabus|curriculum|lab/i.test(lower)) {
         organization = "Cambridge Institute of Technology";
-      } else if (/galactic|3d|g3d|blender|three\s*js|webgl|unity|render|model/i.test(lower)) {
+      } else if (/galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|order|tracking/i.test(lower)) {
         organization = "Galactic 3D";
       }
 
-      // Category
+      // 2. Category Detection
       let category = "Development";
-      if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets)\b/i.test(lower)) {
-        category = "Design";
-      } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading)\b/i.test(lower)) {
-        category = "Research";
-      } else if (/\b(meet|meeting|call|sync|discussion|standup|client|huddle|interview)\b/i.test(lower)) {
+      if (/\b(meet|meeting|meetings|call|sync|discussion|standup|client|huddle|interview|touchpoint|bass\s*aerospace)\b/i.test(lower)) {
         category = "Meeting";
+      } else if (/\b(design|figma|ui|ux|mockup|wireframe|layout|css|styling|theme|assets|shader|texture)\b/i.test(lower)) {
+        category = "Design";
+      } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading|feasibility)\b/i.test(lower)) {
+        category = "Research";
       } else if (/\b(test|testing|qa|verify|validation|cypress|jest|audit)\b/i.test(lower)) {
         category = "Testing";
-      } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report)\b/i.test(lower)) {
+      } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report|specification)\b/i.test(lower)) {
         category = "Documentation";
-      } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor)\b/i.test(lower)) {
+      } else if (/\b(code|build|api|develop|feature|backend|frontend|react|node|database|fix|bug|refactor|orders|tracking|browser)\b/i.test(lower)) {
         category = "Development";
       }
 
-      // Priority
+      // 3. Priority Detection
       let priority = "MEDIUM";
-      if (/\b(urgent|critical|high priority|asap|important|blocker|crucial|p0|p1)\b/i.test(lower)) {
+      if (/\b(urgent|critical|high priority|asap|important|blocker|crucial|p0|p1|deadline)\b/i.test(lower)) {
         priority = "HIGH";
       } else if (/\b(low priority|minor|trivial|optional|whenever|p3|p4)\b/i.test(lower)) {
         priority = "LOW";
       }
 
-      // Times
+      // 4. Times Detection
       let startTime = "09:00";
       let endTime = "11:00";
       const timeRangeMatch = lower.match(/(?:from\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|-|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
@@ -1595,28 +1628,40 @@
         endTime = String(eH).padStart(2, "0") + ":" + String(eM).padStart(2, "0");
       }
 
-      // Notes
+      // 5. Notes
       let notes = "";
       const notesMatch = text.match(/(?:notes?|blockers?|issues?|hurdles?|stuck on|problem was|fixed bug|resolved)[:\s]+([^.]+)/i);
       if (notesMatch) notes = notesMatch[1].trim();
 
-      // Learnings
+      // 6. Learnings
       let learnings = "";
       const learningsMatch = text.match(/(?:learnings?|insights?|takeaways?|learned that|learned about|understood)[:\s]+([^.]+)/i);
       if (learningsMatch) learnings = learningsMatch[1].trim();
 
-      // Title
+      // 7. Title Generation
       let title = "";
-      const firstSentence = text.split(/[.!?\n]/)[0].trim();
-      const cleanTitle = firstSentence
-        .replace(/^(i worked on|i built|i did|worked on|working on|today i|spent time on|for galactic 3d|for cambridge)\s+/i, "")
-        .replace(/\s+(from|between)\s+\d+.*$/i, "");
-
-      if (cleanTitle.length > 4 && cleanTitle.length < 75) {
-        title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+      if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
+        title = "Meeting with Bass Aerospace & Order Tracking";
+      } else if (/bass\s*aerospace/i.test(lower)) {
+        title = "Meeting with Bass Aerospace";
       } else {
-        title = category + " Deliverables - " + organization.split(" ")[0];
+        let clean = text
+          .replace(/^(electric\s*3d|galactic\s*3d|cambridge)\s*(was there today|today|there today)?\s*(so was|so i was|i was|was)?\s*/i, "")
+          .replace(/^(today\s*i\s*(was|worked|built|did|spent time on)|working on|worked on|i was working on|i did|spent time on|handled)\s+/i, "")
+          .replace(/\s+(from|between)\s+\d+.*$/i, "")
+          .trim();
+        clean = clean.replace(/\b(and also like|also like|like figureing out|figureing out|figuring out)\b/gi, "& review");
+        const firstLine = clean.split(/[\n.]/)[0].trim();
+        if (firstLine.length >= 5 && firstLine.length <= 80) {
+          title = firstLine.split(" ").map(w => w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(" ");
+        } else if (clean.length >= 5) {
+          const words = clean.split(" ").slice(0, 7).join(" ");
+          title = words.charAt(0).toUpperCase() + words.slice(1);
+        } else {
+          title = category + " Task - " + organization.split(" ")[0];
+        }
       }
+      if (title.length > 70) title = title.substring(0, 67) + "...";
 
       return {
         organization,
@@ -1647,6 +1692,41 @@
       if (data.endTime) document.getElementById('taskEndTime').value = data.endTime;
       if (data.notes && document.getElementById('taskNotes')) document.getElementById('taskNotes').value = data.notes;
       if (data.learnings && document.getElementById('taskLearnings')) document.getElementById('taskLearnings').value = data.learnings;
+    }
+
+    function triggerManualSummaryAutoFill() {
+      const input = document.getElementById('smartSummaryInput');
+      const val = (input ? input.value : '').trim();
+      if (!val) {
+        alert("Please paste or type your work summary or description first!");
+        return;
+      }
+      const parsed = parseVoiceLocally(val);
+      applyVoiceAutoFill(parsed);
+      const sub = document.getElementById('smartVoiceSubtitle');
+      if (sub) {
+        sub.innerText = "✨ All fields automatically filled from your summary!";
+        sub.className = "text-[11px] sm:text-xs text-emerald-600 font-bold mt-0.5";
+        setTimeout(() => {
+          sub.innerText = "Paste any raw summary or speak — AI fills every space automatically!";
+          sub.className = "text-[11px] sm:text-xs text-slate-500 mt-0.5";
+        }, 3500);
+      }
+    }
+
+    function handleSummaryInputPaste(event) {
+      const clipboardData = event.clipboardData || window.clipboardData;
+      const pastedText = clipboardData ? clipboardData.getData('text') : '';
+      if (pastedText && pastedText.trim()) {
+        setTimeout(() => {
+          triggerManualSummaryAutoFill();
+        }, 50);
+      }
+    }
+
+    function clearSmartSummaryInput() {
+      const input = document.getElementById('smartSummaryInput');
+      if (input) input.value = '';
     }
 
     function toggleSmartVoiceAutoFill() {
@@ -1682,10 +1762,10 @@
       if (card) {
         card.className = "p-3.5 sm:p-4 rounded-2xl border border-rose-300 bg-rose-50/70 transition-all shadow-md animate-pulse";
       }
-      if (iconBox) iconBox.className = "p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-rose-600 text-white shadow animate-bounce";
+      if (iconBox) iconBox.className = "p-2 rounded-xl flex items-center justify-center shrink-0 bg-rose-600 text-white shadow animate-bounce";
       if (icon) icon.setAttribute('data-lucide', 'mic-off');
       if (btn) {
-        btn.className = "w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer";
+        btn.className = "px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer";
       }
       if (btnText) btnText.innerText = "Stop & Fill";
       if (sub) sub.innerText = "Listening... Speak workplace, work done, times, and takeaways!";
@@ -1696,6 +1776,8 @@
           .map(result => result[0].transcript)
           .join(' ');
         smartVoiceTranscript = transcript;
+        const sumInput = document.getElementById('smartSummaryInput');
+        if (sumInput) sumInput.value = transcript;
         if (transBox && transText) {
           transBox.classList.remove('hidden');
           transText.innerText = transcript;
@@ -1735,13 +1817,13 @@
       if (card) {
         card.className = "p-3.5 sm:p-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-blue-50/70 transition-all shadow-sm";
       }
-      if (iconBox) iconBox.className = "p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow";
+      if (iconBox) iconBox.className = "p-2 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow";
       if (icon) icon.setAttribute('data-lucide', 'sparkles');
       if (btn) {
-        btn.className = "w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer";
+        btn.className = "px-3.5 py-2 rounded-xl border border-indigo-300 bg-white hover:bg-indigo-50 text-slate-800 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer";
       }
       if (btnText) btnText.innerText = "Tap to Speak";
-      if (sub) sub.innerText = "Speak naturally in one go — AI understands and fills every field!";
+      if (sub) sub.innerText = "Paste any raw summary or speak — AI fills every space automatically!";
       lucide.createIcons();
 
       if (smartVoiceTranscript && smartVoiceTranscript.trim()) {
@@ -1753,6 +1835,7 @@
     // Modal
     function openModal() {
       stopSmartVoiceAutoFill();
+      clearSmartSummaryInput();
       const transBox = document.getElementById('smartVoiceTranscriptBox');
       if (transBox) transBox.classList.add('hidden');
       tempAttachedPhotos = [];
