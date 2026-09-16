@@ -22,6 +22,7 @@ import {
   Eye,
   Code,
   Layers,
+  ChevronLeft,
   ChevronRight,
   AlertCircle,
   Lightbulb,
@@ -30,6 +31,18 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  subWeeks,
+  addWeeks,
+  startOfMonth,
+  subMonths,
+  addMonths,
+  subDays,
+  addDays,
+} from "date-fns";
 
 interface ReportGeneratorModalProps {
   isOpen: boolean;
@@ -191,6 +204,64 @@ export function ReportGeneratorModal({
     if (defaultType) setType(defaultType);
     setReportResult(null);
   }, [defaultType, isOpen]);
+
+  const safeDate = React.useMemo(() => {
+    if (!targetDate) return new Date();
+    const d = new Date(targetDate);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }, [targetDate]);
+
+  const weeksList = React.useMemo(() => {
+    const today = new Date();
+    const currentWeekMon = startOfWeek(today, { weekStartsOn: 1 });
+    const list = [];
+    for (let i = -2; i <= 16; i++) {
+      const wStart = subWeeks(currentWeekMon, i);
+      const wEnd = endOfWeek(wStart, { weekStartsOn: 1 });
+      const val = format(wStart, "yyyy-MM-dd");
+      let label = `${format(wStart, "MMM d")} – ${format(wEnd, "MMM d, yyyy")}`;
+      if (i === 0) label += " (Current Week)";
+      else if (i === 1) label += " (Last Week)";
+      else if (i === -1) label += " (Next Week)";
+      list.push({ val, label });
+    }
+    return list;
+  }, []);
+
+  const monthsList = React.useMemo(() => {
+    const today = new Date();
+    const currentMonth1st = startOfMonth(today);
+    const list = [];
+    for (let i = -2; i <= 16; i++) {
+      const mStart = subMonths(currentMonth1st, i);
+      const val = format(mStart, "yyyy-MM-dd");
+      let label = format(mStart, "MMMM yyyy");
+      if (i === 0) label += " (Current Month)";
+      else if (i === 1) label += " (Last Month)";
+      list.push({ val, label });
+    }
+    return list;
+  }, []);
+
+  const handlePrev = () => {
+    if (type === "WEEKLY") {
+      setTargetDate(format(subWeeks(safeDate, 1), "yyyy-MM-dd"));
+    } else if (type === "MONTHLY") {
+      setTargetDate(format(subMonths(safeDate, 1), "yyyy-MM-dd"));
+    } else {
+      setTargetDate(format(subDays(safeDate, 1), "yyyy-MM-dd"));
+    }
+  };
+
+  const handleNext = () => {
+    if (type === "WEEKLY") {
+      setTargetDate(format(addWeeks(safeDate, 1), "yyyy-MM-dd"));
+    } else if (type === "MONTHLY") {
+      setTargetDate(format(addMonths(safeDate, 1), "yyyy-MM-dd"));
+    } else {
+      setTargetDate(format(addDays(safeDate, 1), "yyyy-MM-dd"));
+    }
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -589,15 +660,113 @@ export function ReportGeneratorModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-              Reference Date
-            </label>
-            <input
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background font-medium focus:ring-2 focus:ring-primary/20"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {type === "WEEKLY" ? "Choose Week" : type === "MONTHLY" ? "Choose Month" : "Choose Date"}
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setType("WEEKLY")}
+                  className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-colors ${
+                    type === "WEEKLY"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType("MONTHLY")}
+                  className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-colors ${
+                    type === "MONTHLY"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType("DAILY")}
+                  className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-colors ${
+                    type === "DAILY"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Day
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handlePrev}
+                title={type === "WEEKLY" ? "Previous Week" : type === "MONTHLY" ? "Previous Month" : "Previous Day"}
+                className="p-2 rounded-lg border border-border bg-background hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground shrink-0 shadow-xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+
+              {type === "WEEKLY" && (
+                <select
+                  value={format(startOfWeek(safeDate, { weekStartsOn: 1 }), "yyyy-MM-dd")}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background font-medium focus:ring-2 focus:ring-primary/20 text-foreground cursor-pointer shadow-xs"
+                >
+                  {weeksList.map((w) => (
+                    <option key={w.val} value={w.val}>
+                      {w.label}
+                    </option>
+                  ))}
+                  {!weeksList.some((w) => w.val === format(startOfWeek(safeDate, { weekStartsOn: 1 }), "yyyy-MM-dd")) && (
+                    <option value={format(startOfWeek(safeDate, { weekStartsOn: 1 }), "yyyy-MM-dd")}>
+                      {format(startOfWeek(safeDate, { weekStartsOn: 1 }), "MMM d")} – {format(endOfWeek(safeDate, { weekStartsOn: 1 }), "MMM d, yyyy")} (Custom)
+                    </option>
+                  )}
+                </select>
+              )}
+
+              {type === "MONTHLY" && (
+                <select
+                  value={format(startOfMonth(safeDate), "yyyy-MM-dd")}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background font-medium focus:ring-2 focus:ring-primary/20 text-foreground cursor-pointer shadow-xs"
+                >
+                  {monthsList.map((m) => (
+                    <option key={m.val} value={m.val}>
+                      {m.label}
+                    </option>
+                  ))}
+                  {!monthsList.some((m) => m.val === format(startOfMonth(safeDate), "yyyy-MM-dd")) && (
+                    <option value={format(startOfMonth(safeDate), "yyyy-MM-dd")}>
+                      {format(startOfMonth(safeDate), "MMMM yyyy")} (Custom)
+                    </option>
+                  )}
+                </select>
+              )}
+
+              {type === "DAILY" && (
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background font-medium focus:ring-2 focus:ring-primary/20 text-foreground shadow-xs"
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={handleNext}
+                title={type === "WEEKLY" ? "Next Week" : type === "MONTHLY" ? "Next Month" : "Next Day"}
+                className="p-2 rounded-lg border border-border bg-background hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground shrink-0 shadow-xs"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-end">
