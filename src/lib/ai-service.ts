@@ -143,7 +143,11 @@ ${tasks.map((t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] "${t.t
 
 ${journals.length > 0 ? `JOURNALS:\n${journals.map((j) => `- Reflection: ${j.reflection}`).join("\n")}` : ""}
 
-Provide a clean, executive summary strictly highlighting the real deliverables above.`;
+Provide a concise, executive-level summary strictly under 120 words. Keep it elegant, professional, and free of markdown clutter. Focus on:
+- Executive Overview (2 sentences on core progress and ${hoursWorked} hrs logged)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Key Accomplishments (2-3 clean bullet points)
+- Next Priorities (1 brief bullet point)`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -153,9 +157,8 @@ Provide a clean, executive summary strictly highlighting the real deliverables a
 
       const text = response.choices[0]?.message?.content;
       if (text) {
-        const fullReport = `${text}\n\n---\n\n## 📝 Exact Itemized Daily Audit\n\n${itemizedAudit}`;
         return {
-          summary: fullReport,
+          summary: text,
           hoursWorked,
           tasksCompleted: completedTasks.length,
           categoryBreakdown,
@@ -172,7 +175,7 @@ Provide a clean, executive summary strictly highlighting the real deliverables a
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (geminiKey) {
     try {
-      const prompt = `You are WorkTrail AI. Generate an EXACT, factual Daily Work Summary based strictly on the tasks below:
+      const prompt = `You are WorkTrail AI. Generate a concise, high-level Daily Work Summary based strictly on the tasks below:
 
 CRITICAL RULE:
 - Only describe what is explicitly written in the tasks data.
@@ -191,13 +194,16 @@ ${tasks.map((t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] "${t.t
 
 ${journals.length > 0 ? `JOURNALS:\n${journals.map((j) => `- Reflection: ${j.reflection}`).join("\n")}` : ""}
 
-Provide a clean, executive summary strictly highlighting the real deliverables above. Keep formatting clean, elegant, and corporate without excessive asterisks or markdown clutter.`;
+Provide a concise, executive-level summary strictly under 120 words. Keep it elegant, professional, and free of markdown clutter. Focus on:
+- Executive Overview (2 sentences on core progress and ${hoursWorked} hrs logged)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Key Accomplishments (2-3 clean bullet points)
+- Next Priorities (1 brief bullet point)`;
 
       const text = await callGeminiGenerate(prompt, geminiKey);
       if (text) {
-        const fullReport = `${text}\n\n---\n\n## 📝 Exact Itemized Daily Audit\n\n${itemizedAudit}`;
         return {
-          summary: fullReport,
+          summary: text,
           hoursWorked,
           tasksCompleted: completedTasks.length,
           categoryBreakdown,
@@ -212,40 +218,34 @@ Provide a clean, executive summary strictly highlighting the real deliverables a
 
   // Exact local summary fallback
   const achievements = completedTasks.map(
-    (t, idx) => `${idx + 1}. **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.startTime} - ${t.endTime}, ${t.category}): ${t.description}`
+    (t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] ${t.title}: ${t.description}`
   );
   const pending = pendingTasksList.map(
-    (t) => `- 📌 **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.status.replace("_", " ")}): ${t.description}`
+    (t) => `• [${t.organization || "Galactic 3D"}] ${t.title} (${t.status.replace("_", " ")}): ${t.description}`
   );
 
   const categoryLines = Object.entries(categoryBreakdown)
-    .map(([cat, mins]) => `* **${cat}**: ${formatDuration(mins)} (${Math.round((mins / (totalMinutes || 1)) * 100)}%)`)
+    .map(([cat, mins]) => `• ${cat}: ${formatDuration(mins)} (${Math.round((mins / (totalMinutes || 1)) * 100)}%)`)
     .join("\n");
 
-  const allLearnings = tasks.filter((t) => t.learnings && t.learnings.trim()).map((t) => `- **${t.title}:** ${t.learnings!.trim()}`);
-  const allNotes = tasks.filter((t) => t.notes && t.notes.trim()).map((t) => `- **${t.title}:** ${t.notes!.trim()}`);
+  const allLearnings = tasks.filter((t) => t.learnings && t.learnings.trim()).map((t) => `• ${t.title}: ${t.learnings!.trim()}`);
+  const allNotes = tasks.filter((t) => t.notes && t.notes.trim()).map((t) => `• ${t.title}: ${t.notes!.trim()}`);
 
-  const markdown = `## 📋 Exact Daily Productivity & Work Report
+  const markdown = `## Daily Productivity & Work Summary
 
-### 🚀 Overview
-- **Total Hours Logged:** ${hoursWorked} hrs (${formatDuration(totalMinutes)})
-- **Tasks Completed:** ${completedTasks.length} of ${tasks.length}
-- **🚀 Galactic 3D:** ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
-- **🎓 Cambridge Institute of Technology:** ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
+### Overview
+• Total Hours Logged: ${hoursWorked} hrs across ${tasks.length} deliverables
+• Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+• Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
 
-### ⏱️ Category Breakdown
-${categoryLines || "*No categorical breakdown available.*"}
+### Category Breakdown
+${categoryLines || "• General Development"}
 
-### 🏆 Exact Deliverables Completed
-${achievements.length ? achievements.join("\n\n") : "- Continued active progress on assigned tasks."}
-${pending.length ? `\n\n### ⏳ In-Progress / Pending Tasks\n${pending.join("\n")}` : ""}
-${allLearnings.length ? `\n\n### 💡 Key Technical Learnings\n${allLearnings.join("\n")}` : ""}
-${allNotes.length ? `\n\n### ⚠️ Notes / Blockers Encountered\n${allNotes.join("\n")}` : ""}
-
----
-
-## 📝 Exact Itemized Deliverables Audit
-${itemizedAudit}`;
+### Key Accomplishments
+${achievements.length ? achievements.join("\n") : "• Progressed on assigned project deliverables."}
+${pending.length ? `\n### In-Progress & Next Priorities\n${pending.join("\n")}` : ""}
+${allLearnings.length ? `\n### Key Learnings\n${allLearnings.join("\n")}` : ""}
+${allNotes.length ? `\n### Action Items / Notes\n${allNotes.join("\n")}` : ""}`;
 
   return {
     summary: markdown,
@@ -322,7 +322,11 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above.`;
+Provide a concise, high-level Weekly Executive Summary strictly under 150 words. Keep it elegant, professional, and free of markdown clutter or repeated task logs. Focus on:
+- Executive Summary (2-3 crisp sentences summarizing velocity, key accomplishments, and ${hoursWorked} hrs tracked)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Primary Milestones (2-3 clean bullet points of top deliverables)
+- Next Sprint Priorities (1-2 brief bullet points)`;
 
       const res = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -331,8 +335,7 @@ Provide an executive summary and highlights strictly reflecting ONLY the exact d
       });
       const aiOverview = res.choices[0]?.message?.content;
       if (aiOverview) {
-        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Deliverables Audit\n\n${itemizedAudit}`;
-        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+        return { summary: aiOverview, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (e) {
       console.warn("OpenAI weekly report failed, trying Gemini / fallback:", e);
@@ -343,7 +346,7 @@ Provide an executive summary and highlights strictly reflecting ONLY the exact d
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (geminiKey) {
     try {
-      const prompt = `You are WorkTrail AI generating an EXACT, factual Weekly Work Report for ${startDate} to ${endDate}.
+      const prompt = `You are WorkTrail AI generating a concise, high-level Weekly Work Report for ${startDate} to ${endDate}.
 
 CRITICAL INSTRUCTION:
 - You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
@@ -363,12 +366,15 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above. Keep formatting clean and highly professional. Avoid repetitive asterisks or nested bold markers; use clean bullet points and clear corporate prose.`;
+Provide a concise, high-level Weekly Executive Summary strictly under 150 words. Keep it elegant, professional, and free of markdown clutter or repeated task logs. Focus on:
+- Executive Summary (2-3 crisp sentences summarizing velocity, key accomplishments, and ${hoursWorked} hrs tracked)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Primary Milestones (2-3 clean bullet points of top deliverables)
+- Next Sprint Priorities (1-2 brief bullet points)`;
 
       const aiOverview = await callGeminiGenerate(prompt, geminiKey);
       if (aiOverview) {
-        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Deliverables Audit\n\n${itemizedAudit}`;
-        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+        return { summary: aiOverview, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (ge) {
       console.warn("Gemini weekly report failed:", ge);
@@ -376,30 +382,17 @@ Provide an executive summary and highlights strictly reflecting ONLY the exact d
   }
 
   // Deterministic 100% exact report
-  const markdown = `## 📊 Executive Weekly Work Report
-**Period:** ${startDate} to ${endDate}  
-**Total Hours Logged:** ${hoursWorked} hrs | **Deliverables Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
+  const markdown = `## Executive Weekly Performance Summary
+**Period:** ${startDate} to ${endDate} | **Total Hours:** ${hoursWorked} hrs | **Deliverables Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
 
----
+### Workplace Allocation
+• Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"})
+• Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"})
 
-### 🏢 Workplace Distribution
-- 🚀 **Galactic 3D:** **${+(galacticMins / 60).toFixed(1)} hrs** across ${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"}
-- 🎓 **Cambridge Institute of Technology:** **${+(cambridgeMins / 60).toFixed(1)} hrs** across ${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"}
-
----
-
-### 🏆 Exact Completed Deliverables
+### Key Accomplishments
 ${accomplishmentsList}
 ${pendingSection}
-${learningsSection}
-${notesSection}
-
----
-
-## 📝 Exact Itemized Deliverables Audit
-*Below is the exact, unedited chronological log of every recorded activity, time span, deliverable details, and notes:*
-
-${itemizedAudit}`;
+${learningsSection}`;
 
   return {
     summary: markdown,
@@ -463,7 +456,11 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive review strictly reflecting ONLY the exact deliverables above.`;
+Provide a concise, high-level Monthly Executive Review strictly under 180 words. Keep it elegant, professional, and free of markdown clutter or repeated task logs. Focus on:
+- Executive Summary (2-3 crisp sentences on monthly achievements and ${hoursWorked} hrs logged)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Strategic Milestones (3-4 clean bullet points summarizing primary completed deliverables)
+- Next Month Priorities (1-2 brief bullet points)`;
 
       const res = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -472,8 +469,7 @@ Provide an executive review strictly reflecting ONLY the exact deliverables abov
       });
       const aiOverview = res.choices[0]?.message?.content;
       if (aiOverview) {
-        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Monthly Audit\n\n${itemizedAudit}`;
-        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+        return { summary: aiOverview, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (e) {
       console.warn("OpenAI monthly report failed, trying Gemini / fallback:", e);
@@ -484,7 +480,7 @@ Provide an executive review strictly reflecting ONLY the exact deliverables abov
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (geminiKey) {
     try {
-      const prompt = `You are WorkTrail AI generating an EXACT, factual Monthly Work Review for ${monthName}.
+      const prompt = `You are WorkTrail AI generating a concise, high-level Monthly Work Review for ${monthName}.
 
 CRITICAL INSTRUCTION:
 - You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
@@ -505,42 +501,33 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive review strictly reflecting ONLY the exact deliverables above. Keep formatting clean, elegant, and professional without repetitive asterisks or nested bold markers.`;
+Provide a concise, high-level Monthly Executive Review strictly under 180 words. Keep it elegant, professional, and free of markdown clutter or repeated task logs. Focus on:
+- Executive Summary (2-3 crisp sentences on monthly achievements and ${hoursWorked} hrs logged)
+- Workplace Allocation (Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h | Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h)
+- Strategic Milestones (3-4 clean bullet points summarizing primary completed deliverables)
+- Next Month Priorities (1-2 brief bullet points)`;
 
       const aiOverview = await callGeminiGenerate(prompt, geminiKey);
       if (aiOverview) {
-        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Monthly Audit\n\n${itemizedAudit}`;
-        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+        return { summary: aiOverview, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (ge) {
       console.warn("Gemini monthly report failed:", ge);
     }
   }
 
-  const markdown = `## 🏆 Exact Monthly Comprehensive Performance Review
-**Month:** ${monthName}  
-**Total Hours Logged:** ${hoursWorked} hrs | **Tasks Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
+  const markdown = `## Monthly Comprehensive Performance Summary
+**Month:** ${monthName} | **Total Hours:** ${hoursWorked} hrs | **Completed:** ${completedTasks.length} of ${tasks.length} (${completionRate}%)
 
----
+### Workplace Allocation
+• Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"})
+• Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"})
 
-### 🏢 Workplace Distribution
-- 🚀 **Galactic 3D:** **${+(galacticMins / 60).toFixed(1)} hrs** across ${galacticTasks.length} ${galacticTasks.length === 1 ? "task" : "tasks"}
-- 🎓 **Cambridge Institute of Technology:** **${+(cambridgeMins / 60).toFixed(1)} hrs** across ${cambridgeTasks.length} ${cambridgeTasks.length === 1 ? "task" : "tasks"}
-
----
-
-### 🎯 Key Deliverables Delivered
+### Primary Accomplishments
 ${accomplishmentsList}
-${inProgressTasks.length > 0 ? `\n\n### ⏳ In-Progress Deliverables\n${inProgressTasks.map((t) => `- **[${t.organization || "Galactic 3D"}] ${t.title}** (${t.date}): ${t.description}`).join("\n")}` : ""}
-${allLearnings.length > 0 ? `\n\n### 💡 Key Technical Learnings\n${allLearnings.join("\n")}` : ""}
-${allNotes.length > 0 ? `\n\n### ⚠️ Notes & Blockers Encountered\n${allNotes.join("\n")}` : ""}
-
----
-
-## 📝 Exact Itemized Monthly Deliverables Audit
-*Below is the exact, unedited chronological log of every recorded activity in ${monthName}:*
-
-${itemizedAudit}`;
+${inProgressTasks.length > 0 ? `\n### In-Progress Deliverables\n${inProgressTasks.map((t) => `• [${t.organization || "Galactic 3D"}] ${t.title}: ${t.description}`).join("\n")}` : ""}
+${allLearnings.length > 0 ? `\n### Key Technical Insights\n${allLearnings.join("\n")}` : ""}
+${allNotes.length > 0 ? `\n### Action Items\n${allNotes.join("\n")}` : ""}`;
 
   return {
     summary: markdown,

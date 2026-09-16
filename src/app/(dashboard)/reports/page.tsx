@@ -159,6 +159,11 @@ function FormattedReportView({ content, tasks }: { content: string; tasks?: any[
         const textContent = sec.lines.join("\n").trim();
         if (!textContent && !sec.title) return null;
 
+        const titleLower = sec.title.toLowerCase();
+        if (tasks && tasks.length > 0 && titleLower.includes("itemized") && titleLower.includes("audit")) {
+          return null;
+        }
+
         const isExecutive = sec.title.toLowerCase().includes("executive") || sec.title.toLowerCase().includes("overview");
         const isLearnings = sec.title.toLowerCase().includes("learning") || sec.title.toLowerCase().includes("insight");
         const isBlockers = sec.title.toLowerCase().includes("blocker") || sec.title.toLowerCase().includes("challenge") || sec.title.toLowerCase().includes("notes");
@@ -374,29 +379,34 @@ export default function ReportsPage() {
 
         <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Executive Narrative & Summary</h3>
         <div class="content-block">
-          ${(report.content || "")
-            .split("\n")
-            .map((line: string) => {
-              const trimmed = line.trim();
-              if (!trimmed) return "<div style='height: 6px;'></div>";
-              if (trimmed.startsWith("---")) return "<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;' />";
-              if (trimmed.startsWith("#### ")) {
-                return `<h5 style="font-size: 11px; font-weight: bold; color: #1e293b; margin: 10px 0 3px 0;">${trimmed.replace(/^####\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h5>`;
-              }
-              if (trimmed.startsWith("### ")) {
-                return `<h4 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 14px 0 4px 0; text-transform: uppercase;">${trimmed.replace(/^###\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h4>`;
-              }
-              if (trimmed.startsWith("## ")) {
-                return `<h3 style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 16px 0 6px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">${trimmed.replace(/^##\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h3>`;
-              }
-              if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
-                const clean = trimmed.replace(/^[-*•]\s+/, "").replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
-                return `<div style="display: flex; gap: 6px; margin-bottom: 3px; padding-left: 6px;"><span style="color: #4f46e5;">•</span><span>${clean}</span></div>`;
-              }
-              const cleanLine = trimmed.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
-              return `<p style="margin-bottom: 4px;">${cleanLine}</p>`;
-            })
-            .join("\n")}
+          ${(() => {
+            let content = report.content || "";
+            const auditIdx = content.search(/##\s*.*itemized.*audit/i);
+            if (auditIdx !== -1) content = content.substring(0, auditIdx);
+            return content
+              .split("\n")
+              .map((line: string) => {
+                const trimmed = line.trim();
+                if (!trimmed) return "<div style='height: 6px;'></div>";
+                if (trimmed.startsWith("---")) return "<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;' />";
+                if (trimmed.startsWith("#### ")) {
+                  return `<h5 style="font-size: 11px; font-weight: bold; color: #1e293b; margin: 10px 0 3px 0;">${trimmed.replace(/^####\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h5>`;
+                }
+                if (trimmed.startsWith("### ")) {
+                  return `<h4 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 14px 0 4px 0; text-transform: uppercase;">${trimmed.replace(/^###\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h4>`;
+                }
+                if (trimmed.startsWith("## ")) {
+                  return `<h3 style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 16px 0 6px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">${trimmed.replace(/^##\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h3>`;
+                }
+                if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
+                  const clean = trimmed.replace(/^[-*•]\s+/, "").replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
+                  return `<div style="display: flex; gap: 6px; margin-bottom: 3px; padding-left: 6px;"><span style="color: #4f46e5;">•</span><span>${clean}</span></div>`;
+                }
+                const cleanLine = trimmed.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
+                return `<p style="margin-bottom: 4px;">${cleanLine}</p>`;
+              })
+              .join("\n");
+          })()}
         </div>
 
         <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
@@ -535,7 +545,12 @@ export default function ReportsPage() {
       doc.setTextColor(51, 65, 85);
 
       // Split raw content cleanly without any asterisks or markdown artifacts
-      const cleanContent = (report.content || "")
+      let rawContent = report.content || "";
+      const auditCutoff = rawContent.search(/##\s*.*itemized.*audit/i);
+      if (auditCutoff !== -1) {
+        rawContent = rawContent.substring(0, auditCutoff);
+      }
+      const cleanContent = rawContent
         .replace(/#{1,6}\s+/g, "")
         .replace(/\*\*([^*]+?)\*\*/g, "$1")
         .replace(/\*([^*]+?)\*/g, "$1")
@@ -581,7 +596,12 @@ export default function ReportsPage() {
       const tasks = report.tasks || [];
 
       // Clean and organize the executive narrative rows without asterisks
-      const rawLines = (report.content || "").split("\n");
+      let rawContent = report.content || "";
+      const auditCutoff = rawContent.search(/##\s*.*itemized.*audit/i);
+      if (auditCutoff !== -1) {
+        rawContent = rawContent.substring(0, auditCutoff);
+      }
+      const rawLines = rawContent.split("\n");
       const narrativeRows: string[][] = [];
 
       narrativeRows.push(["EXECUTIVE NARRATIVE SUMMARY"]);
@@ -594,6 +614,7 @@ export default function ReportsPage() {
           continue;
         }
         if (trimmed.startsWith("---")) continue;
+        if (trimmed.toLowerCase().includes("itemized") && trimmed.toLowerCase().includes("audit")) break;
 
         // Clean out all markdown asterisks, hashes, backticks
         const clean = trimmed
