@@ -164,7 +164,49 @@ Provide a clean, executive summary strictly highlighting the real deliverables a
         };
       }
     } catch (error) {
-      console.warn("OpenAI API call failed, falling back to exact local summary engine:", error);
+      console.warn("OpenAI API call failed, falling back to Gemini / exact local summary engine:", error);
+    }
+  }
+
+  // Check Gemini API for intelligent summary if OpenAI is not available
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiKey) {
+    try {
+      const prompt = `You are WorkTrail AI. Generate an EXACT, factual Daily Work Summary based strictly on the tasks below:
+
+CRITICAL RULE:
+- Only describe what is explicitly written in the tasks data.
+- DO NOT invent, hallucinate, or assume any deliverables, hypothetical meetings, or corporate fluff.
+- Be exact, clear, and professional.
+
+DATA:
+- Total Time: ${hoursWorked} hrs across ${tasks.length} tasks (${completedTasks.length} completed, ${pendingTasksList.length} in progress)
+- Workplace Breakdown: Galactic 3D: ${+(galacticMins / 60).toFixed(1)}h (${galacticTasks.length} tasks), Cambridge: ${+(cambridgeMins / 60).toFixed(1)}h (${cambridgeTasks.length} tasks)
+
+EXACT TASKS:
+${tasks.map((t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] "${t.title}" (${t.startTime}-${t.endTime}, ${t.category}, Status: ${t.status}):
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+${journals.length > 0 ? `JOURNALS:\n${journals.map((j) => `- Reflection: ${j.reflection}`).join("\n")}` : ""}
+
+Provide a clean, executive summary strictly highlighting the real deliverables above.`;
+
+      const text = await callGeminiGenerate(prompt, geminiKey);
+      if (text) {
+        const fullReport = `${text}\n\n---\n\n## 📝 Exact Itemized Daily Audit\n\n${itemizedAudit}`;
+        return {
+          summary: fullReport,
+          hoursWorked,
+          tasksCompleted: completedTasks.length,
+          categoryBreakdown,
+          keyAchievements: completedTasks.map((t) => `[${t.organization || "Galactic 3D"}] ${t.title}`),
+          pendingTasks: pendingTasksList.map((t) => t.title),
+        };
+      }
+    } catch (geminiError) {
+      console.warn("Gemini daily summary call failed:", geminiError);
     }
   }
 
@@ -293,7 +335,43 @@ Provide an executive summary and highlights strictly reflecting ONLY the exact d
         return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (e) {
-      console.warn("OpenAI weekly report failed, fallback:", e);
+      console.warn("OpenAI weekly report failed, trying Gemini / fallback:", e);
+    }
+  }
+
+  // Check Gemini API for weekly summary
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiKey) {
+    try {
+      const prompt = `You are WorkTrail AI generating an EXACT, factual Weekly Work Report for ${startDate} to ${endDate}.
+
+CRITICAL INSTRUCTION:
+- You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
+- DO NOT invent, assume, or hallucinate any tasks, hypothetical projects, or generic corporate filler.
+- Be precise, professional, and 100% faithful to the user's recorded tasks.
+
+DATA:
+- Total Tasks: ${tasks.length} (Completed: ${completedTasks.length}, In Progress: ${inProgressTasks.length})
+- Total Tracked Time: ${hoursWorked} hrs
+- Workplace Split:
+  * Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+  * Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
+
+TASKS LOGGED:
+${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galactic 3D"}] "${t.title}" | Category: ${t.category} | Time: ${t.startTime}-${t.endTime} | Status: ${t.status}
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above.`;
+
+      const aiOverview = await callGeminiGenerate(prompt, geminiKey);
+      if (aiOverview) {
+        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Deliverables Audit\n\n${itemizedAudit}`;
+        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+      }
+    } catch (ge) {
+      console.warn("Gemini weekly report failed:", ge);
     }
   }
 
@@ -536,13 +614,58 @@ import { parseVoiceLocally, ParsedVoiceWorkLog } from "@/lib/voice-parser";
 export { parseVoiceLocally };
 export type { ParsedVoiceWorkLog };
 
+export async function callGeminiGenerate(
+  prompt: string,
+  apiKey?: string,
+  responseJson = false
+): Promise<string | null> {
+  const key = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!key) return null;
+
+  // Use active, resilient Gemini models in priority order
+  const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"];
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      const payload: any = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+        },
+      };
+      if (responseJson) {
+        payload.generationConfig.responseMimeType = "application/json";
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        console.warn(`Gemini model ${model} returned status: ${res.status}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText && rawText.trim()) {
+        return rawText.trim();
+      }
+    } catch (e) {
+      console.warn(`Gemini call error on model ${model}:`, e);
+    }
+  }
+  return null;
+}
+
 export async function parseWithGemini(transcript: string, apiKey: string): Promise<ParsedVoiceWorkLog | null> {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const prompt = `You are WorkTrail AI's intelligent work log parser.
-Extract structured work log fields from the user's update.
-Return ONLY a valid raw JSON object (without markdown code blocks, backticks, or other text) with these exact keys:
+Extract structured work log fields from the user's work summary or voice dictation.
+Return ONLY a valid raw JSON object with these exact keys:
 {
   "organization": "Galactic 3D" or "Cambridge Institute of Technology",
   "title": "Concise, professional title (3-7 words, Title Cased, e.g. Daily Project Review & Coordination Meeting)",
@@ -550,7 +673,7 @@ Return ONLY a valid raw JSON object (without markdown code blocks, backticks, or
   "category": "Meeting" | "Development" | "Design" | "Research" | "Testing" | "Documentation" | "Other",
   "date": "${today}",
   "startTime": "HH:MM" (e.g. "09:00"),
-  "endTime": "HH:MM" (e.g. "11:00"),
+  "endTime": "HH:MM" (e.g. "10:30"),
   "priority": "HIGH" | "MEDIUM" | "LOW",
   "status": "COMPLETED" | "IN_PROGRESS" | "PENDING",
   "notes": "Action items, follow-ups, blockers, or pending dependencies",
@@ -558,31 +681,23 @@ Return ONLY a valid raw JSON object (without markdown code blocks, backticks, or
   "tags": "Comma-separated keywords (e.g. Meeting, Project Review, Coordination, Stakeholders)"
 }
 
+Rules:
+1. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
+2. Title: Professional Title Case. Never end with trailing prepositions or conjunctions (never "and", "with", "or").
+3. Status: If attended, held, reviewed, fixed, finished, or delivered -> "COMPLETED". If ongoing -> "IN_PROGRESS".
+4. Notes: Fill with action items, assigned tasks, or blockers.
+5. Learnings: Fill with key takeaways, evaluated decisions, or milestones.
+6. Tags: 3 to 6 relevant technical/contextual tags.
+
 User's Work Summary:
 "${transcript.replace(/"/g, '\\"')}"`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.1,
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      console.warn("Gemini parsing failed with status:", res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawText = await callGeminiGenerate(prompt, apiKey, true);
     if (!rawText) return null;
 
-    const parsed = JSON.parse(rawText);
+    const cleanJson = rawText.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    const parsed = JSON.parse(cleanJson);
+
     return {
       organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
       title: parsed.title || "Daily Work Deliverables",
@@ -590,7 +705,7 @@ User's Work Summary:
       category: ["Meeting", "Development", "Design", "Research", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
       date: parsed.date || today,
       startTime: parsed.startTime || "09:00",
-      endTime: parsed.endTime || "11:00",
+      endTime: parsed.endTime || "10:30",
       priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",
       status: ["COMPLETED", "IN_PROGRESS", "PENDING"].includes(parsed.status) ? parsed.status : "COMPLETED",
       notes: parsed.notes || "",
@@ -608,16 +723,21 @@ export async function parseVoiceWorkLog(
   customApiKey?: string
 ): Promise<ParsedVoiceWorkLog> {
   const cleanTranscript = (transcript || "").trim();
+  const hasCustom = Boolean(customApiKey && customApiKey.trim().length > 0);
+  const isCustomOpenAi = hasCustom && customApiKey!.trim().startsWith("sk-");
 
-  // 1. Check Gemini API (free tier from Google AI Studio)
-  const geminiKey = customApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  // 1. Check Gemini API (Gemini key can be passed or loaded from process.env)
+  const geminiKey = (!isCustomOpenAi && hasCustom ? customApiKey!.trim() : "") ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+
   if (geminiKey && cleanTranscript.length > 5) {
     const geminiParsed = await parseWithGemini(cleanTranscript, geminiKey);
     if (geminiParsed) return geminiParsed;
   }
 
   // 2. Check OpenAI API if configured
-  const openAiKey = customApiKey || process.env.OPENAI_API_KEY;
+  const openAiKey = (isCustomOpenAi ? customApiKey!.trim() : "") || process.env.OPENAI_API_KEY;
   const client = openAiKey
     ? (openAiKey === process.env.OPENAI_API_KEY && openai ? openai : new OpenAI({ apiKey: openAiKey }))
     : null;
@@ -638,7 +758,7 @@ Extract structured fields and return ONLY a raw JSON object with:
 - category: one of ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"]
 - date: YYYY-MM-DD (current date)
 - startTime: 24h format HH:MM (e.g. "09:00")
-- endTime: 24h format HH:MM (e.g. "11:00")
+- endTime: 24h format HH:MM (e.g. "10:30")
 - priority: "HIGH", "MEDIUM", or "LOW"
 - status: "COMPLETED", "IN_PROGRESS", or "PENDING"
 - notes: action items, follow-ups, blockers, or pending dependencies
@@ -663,7 +783,7 @@ Extract structured fields and return ONLY a raw JSON object with:
           category: ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
           date: parsed.date || new Date().toISOString().split("T")[0],
           startTime: parsed.startTime || "09:00",
-          endTime: parsed.endTime || "11:00",
+          endTime: parsed.endTime || "10:30",
           priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",
           status: ["COMPLETED", "IN_PROGRESS", "PENDING"].includes(parsed.status) ? parsed.status : "COMPLETED",
           notes: parsed.notes || "",

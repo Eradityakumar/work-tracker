@@ -1780,18 +1780,87 @@
       if (data.learnings !== undefined && document.getElementById('taskLearnings')) document.getElementById('taskLearnings').value = data.learnings;
     }
 
-    function triggerManualSummaryAutoFill() {
+    async function parseWithGeminiOnline(transcript) {
+      const geminiKey = localStorage.getItem("worktrail_gemini_key") || localStorage.getItem("worktrail_ai_key");
+      if (!geminiKey) return null;
+      const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"];
+      for (const model of models) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          const today = new Date().toISOString().split('T')[0];
+          const payload = {
+            contents: [{
+              parts: [{
+                text: `You are WorkTrail AI's intelligent parser. Extract structured work log fields from the user work update. Return ONLY a valid raw JSON object with:
+{
+  "organization": "Galactic 3D" or "Cambridge Institute of Technology",
+  "title": "Concise professional title (3-7 words, Title Cased)",
+  "description": "Clean summary of deliverables worked on",
+  "category": "Meeting" | "Development" | "Design" | "Research" | "Testing" | "Documentation" | "Other",
+  "date": "${today}",
+  "startTime": "09:00",
+  "endTime": "10:30",
+  "priority": "HIGH" | "MEDIUM" | "LOW",
+  "status": "COMPLETED" | "IN_PROGRESS" | "PENDING",
+  "notes": "Action items, follow-ups, or blockers",
+  "learnings": "Key takeaways, insights, or roadmap decisions",
+  "tags": "Comma-separated keywords"
+}
+
+Work Summary:
+${transcript}`
+              }]
+            }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.1
+            }
+          };
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (rawText) {
+              const cleanJson = rawText.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+              return JSON.parse(cleanJson);
+            }
+          }
+        } catch (e) {
+          console.warn("Gemini online call error on model " + model, e);
+        }
+      }
+      return null;
+    }
+
+    async function triggerManualSummaryAutoFill() {
       const input = document.getElementById('smartSummaryInput');
       const val = (input ? input.value : '').trim();
       if (!val) {
         alert("Please paste or type your work summary or description first!");
         return;
       }
-      const parsed = parseVoiceLocally(val);
-      applyVoiceAutoFill(parsed);
       const sub = document.getElementById('smartVoiceSubtitle');
       if (sub) {
-        sub.innerText = "✨ All fields automatically filled from your summary!";
+        sub.innerText = "🤖 Gemini AI is analyzing and auto-filling every space...";
+        sub.className = "text-[11px] sm:text-xs text-indigo-600 font-bold mt-0.5 animate-pulse";
+      }
+
+      let parsed = null;
+      try {
+        parsed = await parseWithGeminiOnline(val);
+      } catch (err) {}
+
+      if (!parsed) {
+        parsed = parseVoiceLocally(val);
+      }
+
+      applyVoiceAutoFill(parsed);
+      if (sub) {
+        sub.innerText = "✨ All fields automatically filled with Gemini AI!";
         sub.className = "text-[11px] sm:text-xs text-emerald-600 font-bold mt-0.5";
         setTimeout(() => {
           sub.innerText = "Paste any raw summary or speak — AI fills every space automatically!";
