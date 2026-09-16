@@ -55,6 +55,17 @@ function renderFormattedInline(text: string) {
   });
 }
 
+function getTaskHours(t: any): string {
+  if (t.durationHours) return `${t.durationHours} hrs`;
+  if (!t.startTime || !t.endTime) return "1.5 hrs";
+  const [sH, sM] = t.startTime.split(":").map(Number);
+  const [eH, eM] = t.endTime.split(":").map(Number);
+  if (isNaN(sH) || isNaN(eH)) return "1.5 hrs";
+  const diff = (eH * 60 + (eM || 0)) - (sH * 60 + (sM || 0));
+  const mins = diff > 0 ? diff : 90;
+  return `${+(mins / 60).toFixed(1)} hrs`;
+}
+
 // Clean markdown renderer into structured executive sections
 function FormattedReportView({ content, tasks }: { content: string; tasks?: any[] }) {
   // Parse markdown into sections
@@ -95,13 +106,13 @@ function FormattedReportView({ content, tasks }: { content: string; tasks?: any[
               </span>
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Itemized Work Deliverables ({tasks.length})
+                  Work Deliverables Summary ({tasks.length})
                 </h4>
-                <p className="text-[11px] text-muted-foreground">Chronological audit of deliverables</p>
+                <p className="text-[11px] text-muted-foreground">Title of work, description, and hours completed</p>
               </div>
             </div>
-            <Badge variant="outline" className="text-[10px] font-semibold">
-              {tasks.filter((t) => t.status === "COMPLETED").length} Completed
+            <Badge variant="outline" className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+              {tasks.length} {tasks.length === 1 ? "Deliverable" : "Deliverables"}
             </Badge>
           </div>
 
@@ -111,10 +122,9 @@ function FormattedReportView({ content, tasks }: { content: string; tasks?: any[
                 <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
                   <th className="py-2 px-2.5">Date</th>
                   <th className="py-2 px-2.5">Workplace</th>
-                  <th className="py-2 px-2.5">Deliverable Title</th>
-                  <th className="py-2 px-2.5">Category</th>
-                  <th className="py-2 px-2.5">Time</th>
-                  <th className="py-2 px-2.5 text-right">Status</th>
+                  <th className="py-2 px-2.5">Title of Work</th>
+                  <th className="py-2 px-2.5">Description</th>
+                  <th className="py-2 px-2.5 text-right whitespace-nowrap">Hours Done</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -134,23 +144,14 @@ function FormattedReportView({ content, tasks }: { content: string; tasks?: any[
                           {isCit ? "🎓 Cambridge" : "🚀 Galactic 3D"}
                         </span>
                       </td>
-                      <td className="py-2 px-2.5 font-medium text-foreground max-w-xs truncate">
-                        {task.title}
+                      <td className="py-2 px-2.5 font-bold text-foreground max-w-xs">
+                        {(task.title || "").replace(/\*\*/g, "").replace(/\*/g, "")}
                       </td>
-                      <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap text-[11px]">
-                        {task.category || "General"}
+                      <td className="py-2 px-2.5 text-muted-foreground text-[11px] max-w-md">
+                        {(task.description || "").replace(/\*\*/g, "").replace(/\*/g, "")}
                       </td>
-                      <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap text-[11px]">
-                        {task.startTime || "09:00"} – {task.endTime || "10:30"}
-                      </td>
-                      <td className="py-2 px-2.5 text-right whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          task.status === "COMPLETED"
-                            ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60"
-                            : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/60"
-                        }`}>
-                          {task.status || "COMPLETED"}
-                        </span>
+                      <td className="py-2 px-2.5 text-right whitespace-nowrap font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
+                        {getTaskHours(task)}
                       </td>
                     </tr>
                   );
@@ -310,10 +311,9 @@ export function ReportGeneratorModal({
         <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${i + 1}</td>
         <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${t.date || ""}</td>
         <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: bold;">${t.organization || "Galactic 3D"}</td>
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${t.title || ""}</td>
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${t.category || ""}</td>
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${t.startTime || ""} – ${t.endTime || ""}</td>
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: right; font-weight: bold; color: #059669;">${t.status || "COMPLETED"}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: 600;">${(t.title || "").replace(/\*\*/g, "").replace(/\*/g, "")}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569;">${(t.description || "").replace(/\*\*/g, "").replace(/\*/g, "")}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: right; font-weight: bold; color: #4f46e5; white-space: nowrap;">${getTaskHours(t)}</td>
       </tr>
     `).join("");
 
@@ -328,7 +328,7 @@ export function ReportGeneratorModal({
           .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
           .logo span { color: #4f46e5; }
           .meta { text-align: right; font-size: 11px; color: #64748b; }
-          .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+          .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
           .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
           .kpi-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
           .kpi-val { font-size: 16px; font-weight: 800; color: #0f172a; }
@@ -346,15 +346,14 @@ export function ReportGeneratorModal({
             <div style="font-size: 11px; color: #64748b;">Period: ${reportResult.periodStart} to ${reportResult.periodEnd}</div>
           </div>
           <div class="meta">
-            <div><strong>EXECUTIVE AUDIT</strong></div>
+            <div><strong>WORK PERFORMANCE REPORT</strong></div>
             <div>Date: ${new Date().toLocaleDateString()}</div>
-            <div>Status: <strong>VERIFIED</strong></div>
           </div>
         </div>
 
         <div class="kpi-grid">
           <div class="kpi-card">
-            <div class="kpi-label">Hours Logged</div>
+            <div class="kpi-label">Total Hours Worked</div>
             <div class="kpi-val">${reportResult.hoursWorked} hrs</div>
           </div>
           <div class="kpi-card">
@@ -362,27 +361,22 @@ export function ReportGeneratorModal({
             <div class="kpi-val">${reportResult.tasksCompleted} deliverables</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Productivity Rating</div>
-            <div class="kpi-val">${reportResult.productivityScore}%</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Audit Engine</div>
-            <div class="kpi-val">Gemini AI</div>
+            <div class="kpi-label">Reporting Period</div>
+            <div class="kpi-val">${reportResult.periodStart} to ${reportResult.periodEnd}</div>
           </div>
         </div>
 
         ${tasksHtml ? `
-          <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Chronological Deliverables Audit</h3>
+          <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Work Deliverables Summary</h3>
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Date</th>
-                <th>Workplace</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Time</th>
-                <th style="text-align: right;">Status</th>
+                <th style="width: 30px;">#</th>
+                <th style="width: 80px;">Date</th>
+                <th style="width: 120px;">Workplace</th>
+                <th style="width: 180px;">Title of Work</th>
+                <th>Description</th>
+                <th style="width: 80px; text-align: right;">Hours Done</th>
               </tr>
             </thead>
             <tbody>
@@ -425,8 +419,8 @@ export function ReportGeneratorModal({
         </div>
 
         <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
-          <span>WorkTrail AI Performance Tracking System</span>
-          <span>Page 1 of 1 • Strictly Confidential</span>
+          <span>WorkTrail Performance Tracking System</span>
+          <span>Official Work Record</span>
         </div>
       </body>
       </html>
@@ -453,19 +447,19 @@ export function ReportGeneratorModal({
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
-      doc.text("WORKTRAIL AI  |  EXECUTIVE PERFORMANCE REPORT", 14, 12);
+      doc.text("WORKTRAIL  |  EXECUTIVE WORK PERFORMANCE REPORT", 14, 12);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(148, 163, 184);
-      doc.text(`Official Corporate Deliverables Audit  •  Generated: ${new Date().toLocaleDateString()}`, 14, 19);
+      doc.text(`Official Work Deliverables Report  •  Generated: ${new Date().toLocaleDateString()}`, 14, 19);
 
       // Report Header
       let y = 36;
       doc.setTextColor(15, 23, 42);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(15);
-      doc.text(reportResult.title || "Work Performance Audit", 14, y);
+      doc.text(reportResult.title || "Work Performance Report", 14, y);
 
       y += 6;
       doc.setFont("helvetica", "normal");
@@ -473,15 +467,14 @@ export function ReportGeneratorModal({
       doc.setTextColor(71, 85, 105);
       doc.text(`Reporting Scope: ${reportResult.type}   |   Period: ${reportResult.periodStart} to ${reportResult.periodEnd}`, 14, y);
 
-      // KPI Metric Tiles
+      // KPI Metric Tiles (3 clean tiles)
       y += 8;
-      const boxW = (pageWidth - 28 - 9) / 4;
+      const boxW = (pageWidth - 28 - 6) / 3;
       const boxH = 16;
       const kpis = [
-        { label: "HOURS LOGGED", val: `${reportResult.hoursWorked} hrs` },
-        { label: "TASKS DONE", val: `${reportResult.tasksCompleted} tasks` },
-        { label: "PRODUCTIVITY", val: `${reportResult.productivityScore}%` },
-        { label: "AI ENGINE", val: "Gemini AI" },
+        { label: "TOTAL HOURS WORKED", val: `${reportResult.hoursWorked} hrs` },
+        { label: "DELIVERABLES COMPLETED", val: `${reportResult.tasksCompleted} tasks` },
+        { label: "REPORTING PERIOD", val: `${reportResult.periodStart} - ${reportResult.periodEnd}` },
       ];
 
       kpis.forEach((kpi, idx) => {
@@ -503,22 +496,21 @@ export function ReportGeneratorModal({
 
       y += boxH + 8;
 
-      // Itemized Tasks Table (if available)
+      // Itemized Tasks Table with Title of Work, Description, Hours Done
       const tasks = reportResult.tasks || [];
       if (tasks.length > 0) {
         const tableRows = tasks.map((t: any, i: number) => [
           String(i + 1),
           t.date || "",
           t.organization || "Galactic 3D",
-          t.title || "",
-          t.category || "",
-          `${t.startTime || ""} - ${t.endTime || ""}`,
-          t.status || "COMPLETED",
+          (t.title || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          (t.description || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          getTaskHours(t),
         ]);
 
         (doc as any).autoTable({
           startY: y,
-          head: [["#", "Date", "Workplace", "Deliverable Title", "Category", "Time", "Status"]],
+          head: [["#", "Date", "Workplace", "Title of Work", "Description", "Hours Done"]],
           body: tableRows,
           theme: "grid",
           headStyles: {
@@ -537,11 +529,10 @@ export function ReportGeneratorModal({
           columnStyles: {
             0: { cellWidth: 8 },
             1: { cellWidth: 20 },
-            2: { cellWidth: 32 },
-            3: { cellWidth: 60 },
-            4: { cellWidth: 22 },
-            5: { cellWidth: 24 },
-            6: { cellWidth: 20, fontStyle: "bold" },
+            2: { cellWidth: 28 },
+            3: { cellWidth: 42, fontStyle: "bold" },
+            4: { cellWidth: 64 },
+            5: { cellWidth: 20, fontStyle: "bold" },
           },
           margin: { left: 14, right: 14 },
         });
@@ -655,41 +646,57 @@ export function ReportGeneratorModal({
       }
 
       const summaryRows = [
-        ["WORKTRAIL AI - EXECUTIVE WORK AUDIT REPORT"],
+        ["WORKTRAIL - WORK PERFORMANCE REPORT"],
         [""],
         ["Report Title", reportResult.title],
         ["Scope", reportResult.type],
         ["Period Start", reportResult.periodStart],
         ["Period End", reportResult.periodEnd],
         ["Generated Date", new Date().toLocaleString()],
-        ["Total Hours Worked", reportResult.hoursWorked],
+        ["Total Hours Worked", `${reportResult.hoursWorked} hrs`],
         ["Tasks Completed", reportResult.tasksCompleted],
-        ["Productivity Score", `${reportResult.productivityScore}%`],
-        ["Audit Engine", "Gemini AI"],
-        ["Status", "VERIFIED"],
+        [""],
+        ["WORK DELIVERABLES"],
+        ["#", "Date", "Workplace", "Work Title", "Description", "Hours Worked"],
+        ...tasks.map((t: any, idx: number) => [
+          idx + 1,
+          t.date || "",
+          t.organization || "Galactic 3D",
+          (t.title || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          (t.description || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          getTaskHours(t),
+        ]),
+        [""],
+        ["EXECUTIVE SUMMARY"],
         [""],
         ...narrativeRows,
       ];
 
       const wb = XLSX.utils.book_new();
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-      wsSummary["!cols"] = [{ wch: 28 }, { wch: 70 }];
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Executive Summary");
+      wsSummary["!cols"] = [
+        { wch: 6 },
+        { wch: 14 },
+        { wch: 28 },
+        { wch: 38 },
+        { wch: 65 },
+        { wch: 16 },
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Work Summary");
 
       if (tasks.length > 0) {
         const taskHeaders = [
           "#",
           "Date",
           "Workplace",
-          "Deliverable Title",
+          "Work Title",
+          "Description",
+          "Hours Worked",
           "Category",
           "Start Time",
           "End Time",
-          "Status",
-          "Priority",
-          "Description",
-          "Notes / Action Items",
-          "Learnings / Insights",
+          "Notes",
+          "Learnings",
           "Tags",
         ];
 
@@ -698,12 +705,11 @@ export function ReportGeneratorModal({
           t.date || "",
           t.organization || "Galactic 3D",
           (t.title || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          (t.description || "").replace(/\*\*/g, "").replace(/\*/g, ""),
+          getTaskHours(t),
           t.category || "",
           t.startTime || "",
           t.endTime || "",
-          t.status || "COMPLETED",
-          t.priority || "MEDIUM",
-          (t.description || "").replace(/\*\*/g, "").replace(/\*/g, ""),
           (t.notes || "").replace(/\*\*/g, "").replace(/\*/g, ""),
           (t.learnings || "").replace(/\*\*/g, "").replace(/\*/g, ""),
           (t.tags || "").replace(/\*\*/g, "").replace(/\*/g, ""),
@@ -715,17 +721,16 @@ export function ReportGeneratorModal({
           { wch: 12 },
           { wch: 28 },
           { wch: 35 },
+          { wch: 55 },
+          { wch: 14 },
           { wch: 14 },
           { wch: 10 },
           { wch: 10 },
-          { wch: 14 },
-          { wch: 10 },
-          { wch: 45 },
           { wch: 30 },
           { wch: 30 },
           { wch: 20 },
         ];
-        XLSX.utils.book_append_sheet(wb, wsTasks, "Itemized Deliverables");
+        XLSX.utils.book_append_sheet(wb, wsTasks, "Deliverables Log");
       }
 
       XLSX.writeFile(wb, `${(reportResult.title || "Work_Report").replace(/\s+/g, "_")}.xlsx`);
@@ -740,8 +745,8 @@ export function ReportGeneratorModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="AI Performance & Executive Reporting"
-      description="Compile executive-grade reports powered by Google Gemini AI."
+      title="Performance & Work Deliverables Reporting"
+      description="Compile comprehensive work reports powered by Gemini AI."
       maxWidth="4xl"
     >
       <div className="space-y-4 pt-2">
@@ -788,43 +793,33 @@ export function ReportGeneratorModal({
               className="w-full flex items-center justify-center gap-2 text-xs font-bold shadow-md shadow-primary/20"
             >
               <Sparkles className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
-              <span>{isGenerating ? "Synthesizing AI Report..." : "Generate Report"}</span>
+              <span>{isGenerating ? "Synthesizing AI Report..." : "Compile Report"}</span>
             </Button>
           </div>
         </div>
 
-        {/* Report Output View */}
+        {/* Results */}
         {reportResult && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Executive Action Header */}
-            <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/40 p-3 rounded-xl border border-border">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60">
-                    <ShieldCheck className="h-3 w-3" /> OFFICIAL AUDIT
-                  </span>
-                  <Badge variant="outline" className="text-[10px] uppercase font-bold">
-                    {reportResult.type}
-                  </Badge>
-                </div>
-                <h3 className="text-base font-extrabold text-foreground mt-1">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                  <FileText className="h-4 w-4 text-indigo-500" />
                   {reportResult.title}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Reporting Period: <strong>{reportResult.periodStart}</strong> to <strong>{reportResult.periodEnd}</strong>
+                  Period: {reportResult.periodStart} to {reportResult.periodEnd}
                 </p>
               </div>
 
-              {/* Action Buttons: PDF, Excel, Print, Copy */}
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setViewMode(viewMode === "FORMATTED" ? "RAW" : "FORMATTED")}
-                  className="text-xs flex items-center gap-1"
+                  className="text-xs"
                 >
-                  {viewMode === "FORMATTED" ? <Code className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  <span>{viewMode === "FORMATTED" ? "Markdown" : "Formatted"}</span>
+                  {viewMode === "FORMATTED" ? "Raw Text" : "Formatted View"}
                 </Button>
 
                 <Button
@@ -869,11 +864,11 @@ export function ReportGeneratorModal({
               </div>
             </div>
 
-            {/* 4 Executive KPI Ribbon Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Executive KPI Ribbon Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               <div className="p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
-                  <Clock className="h-3.5 w-3.5 text-indigo-500" /> Tracked Time
+                  <Clock className="h-3.5 w-3.5 text-indigo-500" /> Total Hours Worked
                 </div>
                 <div className="text-lg font-black text-foreground mt-1">
                   {reportResult.hoursWorked} <span className="text-xs font-normal text-muted-foreground">hrs</span>
@@ -882,28 +877,19 @@ export function ReportGeneratorModal({
 
               <div className="p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Deliverables
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Deliverables Completed
                 </div>
                 <div className="text-lg font-black text-foreground mt-1">
-                  {reportResult.tasksCompleted} <span className="text-xs font-normal text-muted-foreground">completed</span>
+                  {reportResult.tasksCompleted} <span className="text-xs font-normal text-muted-foreground">tasks</span>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
-                  <TrendingUp className="h-3.5 w-3.5 text-amber-500" /> Productivity
+                  <Calendar className="h-3.5 w-3.5 text-blue-500" /> Reporting Scope
                 </div>
                 <div className="text-lg font-black text-foreground mt-1">
-                  {reportResult.productivityScore}% <span className="text-xs font-normal text-muted-foreground">score</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-card border border-border">
-                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-500" /> AI Intelligence
-                </div>
-                <div className="text-lg font-black text-foreground mt-1">
-                  Gemini <span className="text-xs font-normal text-muted-foreground">Verified</span>
+                  {reportResult.type} <span className="text-xs font-normal text-muted-foreground">report</span>
                 </div>
               </div>
             </div>
