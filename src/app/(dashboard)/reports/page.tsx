@@ -156,83 +156,12 @@ function FormattedReportView({ content, tasks }: { content: string; tasks?: any[
         </div>
       )}
 
-      {sections.map((sec, idx) => {
-        const textContent = sec.lines.join("\n").trim();
-        if (!textContent && !sec.title) return null;
-
-        const titleLower = sec.title.toLowerCase();
-        if (tasks && tasks.length > 0 && titleLower.includes("itemized") && titleLower.includes("audit")) {
-          return null;
-        }
-
-        const isExecutive = sec.title.toLowerCase().includes("executive") || sec.title.toLowerCase().includes("overview");
-        const isLearnings = sec.title.toLowerCase().includes("learning") || sec.title.toLowerCase().includes("insight");
-        const isBlockers = sec.title.toLowerCase().includes("blocker") || sec.title.toLowerCase().includes("challenge") || sec.title.toLowerCase().includes("notes");
-        const isWorkplace = sec.title.toLowerCase().includes("workplace") || sec.title.toLowerCase().includes("distribution");
-
-        return (
-          <div
-            key={idx}
-            className={`rounded-xl border p-4 transition-all ${
-              isExecutive
-                ? "bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200/60 dark:border-indigo-800/50"
-                : isLearnings
-                ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40"
-                : isBlockers
-                ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40"
-                : "bg-card border-border shadow-sm"
-            }`}
-          >
-            {sec.title && sec.title !== "Overview" && (
-              <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-border/50">
-                {isExecutive && <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
-                {isLearnings && <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
-                {isBlockers && <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
-                {isWorkplace && <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-                {!isExecutive && !isLearnings && !isBlockers && !isWorkplace && (
-                  <ChevronRight className="h-4 w-4 text-primary" />
-                )}
-                <h4 className="text-xs sm:text-sm font-bold tracking-wide text-foreground">
-                  {sec.title}
-                </h4>
-              </div>
-            )}
-
-            <div className="text-xs sm:text-[13px] leading-relaxed text-foreground/90 space-y-1.5 whitespace-pre-wrap font-sans">
-              {sec.lines.map((l, lIdx) => {
-                const trimmed = l.trim();
-                if (!trimmed) return <div key={lIdx} className="h-1.5" />;
-                if (trimmed.startsWith("---")) return <hr key={lIdx} className="my-2 border-border/60" />;
-
-                // Bullet points
-                if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
-                  const bulletText = trimmed.replace(/^[-*•]\s+/, "");
-                  return (
-                    <div key={lIdx} className="flex items-start gap-2 pl-1">
-                      <span className="text-primary mt-1 text-[10px] shrink-0">•</span>
-                      <span className="flex-1">{renderFormattedInline(bulletText)}</span>
-                    </div>
-                  );
-                }
-
-                // Numbered list
-                if (/^\d+\.\s+/.test(trimmed)) {
-                  const num = trimmed.match(/^\d+\./)?.[0];
-                  const rest = trimmed.replace(/^\d+\.\s+/, "");
-                  return (
-                    <div key={lIdx} className="flex items-start gap-2 pl-1 font-medium">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold shrink-0">{num}</span>
-                      <span className="flex-1">{renderFormattedInline(rest)}</span>
-                    </div>
-                  );
-                }
-
-                return <p key={lIdx}>{renderFormattedInline(trimmed)}</p>;
-              })}
-            </div>
-          </div>
-        );
-      })}
+      {/* If no itemized tasks found, render fallback message */}
+      {(!tasks || tasks.length === 0) && (
+        <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+          No itemized deliverables found for this reporting period.
+        </div>
+      )}
     </div>
   );
 }
@@ -372,38 +301,6 @@ export default function ReportsPage() {
           <div style="height: 20px;"></div>
         ` : ""}
 
-        <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Executive Narrative & Summary</h3>
-        <div class="content-block">
-          ${(() => {
-            let content = report.content || "";
-            const auditIdx = content.search(/##\s*.*itemized.*audit/i);
-            if (auditIdx !== -1) content = content.substring(0, auditIdx);
-            return content
-              .split("\n")
-              .map((line: string) => {
-                const trimmed = line.trim();
-                if (!trimmed) return "<div style='height: 6px;'></div>";
-                if (trimmed.startsWith("---")) return "<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;' />";
-                if (trimmed.startsWith("#### ")) {
-                  return `<h5 style="font-size: 11px; font-weight: bold; color: #1e293b; margin: 10px 0 3px 0;">${trimmed.replace(/^####\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h5>`;
-                }
-                if (trimmed.startsWith("### ")) {
-                  return `<h4 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 14px 0 4px 0; text-transform: uppercase;">${trimmed.replace(/^###\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h4>`;
-                }
-                if (trimmed.startsWith("## ")) {
-                  return `<h3 style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 16px 0 6px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">${trimmed.replace(/^##\s+/, "").replace(/\*\*/g, "").replace(/\*/g, "")}</h3>`;
-                }
-                if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
-                  const clean = trimmed.replace(/^[-*•]\s+/, "").replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
-                  return `<div style="display: flex; gap: 6px; margin-bottom: 3px; padding-left: 6px;"><span style="color: #4f46e5;">•</span><span>${clean}</span></div>`;
-                }
-                const cleanLine = trimmed.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
-                return `<p style="margin-bottom: 4px;">${cleanLine}</p>`;
-              })
-              .join("\n");
-          })()}
-        </div>
-
         <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
           <span>WorkTrail Performance Tracking System</span>
           <span>Official Work Record</span>
@@ -521,47 +418,6 @@ export default function ReportsPage() {
         y = (doc as any).lastAutoTable.finalY + 8;
       }
 
-      if (y > 240) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(15, 23, 42);
-      doc.text("EXECUTIVE NARRATIVE & DELIVERABLE HIGHLIGHTS", 14, y);
-      y += 5;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(51, 65, 85);
-
-      // Split raw content cleanly without any asterisks or markdown artifacts
-      let rawContent = report.content || "";
-      const auditCutoff = rawContent.search(/##\s*.*itemized.*audit/i);
-      if (auditCutoff !== -1) {
-        rawContent = rawContent.substring(0, auditCutoff);
-      }
-      const cleanContent = rawContent
-        .replace(/#{1,6}\s+/g, "")
-        .replace(/\*\*([^*]+?)\*\*/g, "$1")
-        .replace(/\*([^*]+?)\*/g, "$1")
-        .replace(/^[-*•]\s+/gm, "• ")
-        .replace(/`([^`]+?)`/g, "$1")
-        .replace(/\*/g, "")
-        .replace(/---+/g, "")
-        .trim();
-      const lines = doc.splitTextToSize(cleanContent, pageWidth - 28);
-
-      for (let i = 0; i < lines.length; i++) {
-        if (y > 275) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(lines[i], 14, y);
-        y += 4.5;
-      }
-
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
@@ -587,42 +443,6 @@ export default function ReportsPage() {
     try {
       const tasks = report.tasks || [];
 
-      // Clean and organize the executive narrative rows without asterisks
-      let rawContent = report.content || "";
-      const auditCutoff = rawContent.search(/##\s*.*itemized.*audit/i);
-      if (auditCutoff !== -1) {
-        rawContent = rawContent.substring(0, auditCutoff);
-      }
-      const rawLines = rawContent.split("\n");
-      const narrativeRows: string[][] = [];
-
-      narrativeRows.push(["EXECUTIVE NARRATIVE SUMMARY"]);
-      narrativeRows.push([""]);
-
-      for (const line of rawLines) {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          narrativeRows.push([""]);
-          continue;
-        }
-        if (trimmed.startsWith("---")) continue;
-        if (trimmed.toLowerCase().includes("itemized") && trimmed.toLowerCase().includes("audit")) break;
-
-        // Clean out all markdown asterisks, hashes, backticks
-        const clean = trimmed
-          .replace(/#{1,6}\s+/g, "")
-          .replace(/\*\*([^*]+?)\*\*/g, "$1")
-          .replace(/\*([^*]+?)\*/g, "$1")
-          .replace(/^[-*•]\s+/, "• ")
-          .replace(/`([^`]+?)`/g, "$1")
-          .replace(/\*/g, "")
-          .trim();
-
-        if (clean) {
-          narrativeRows.push([clean.startsWith("•") ? `  ${clean}` : clean]);
-        }
-      }
-
       const summaryRows = [
         ["WORKTRAIL - WORK PERFORMANCE REPORT"],
         [""],
@@ -644,10 +464,6 @@ export default function ReportsPage() {
           (t.description || "").replace(/\*\*/g, "").replace(/\*/g, ""),
           getTaskHours(t),
         ]),
-        [""],
-        ["EXECUTIVE SUMMARY"],
-        [""],
-        ...narrativeRows,
       ];
 
       const wb = XLSX.utils.book_new();
