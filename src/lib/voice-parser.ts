@@ -13,7 +13,7 @@ export interface ParsedVoiceWorkLog {
   tags: string;
 }
 
-export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
+export function parseVoiceLocally(transcript: string, defaultOrganization = "Galactic 3D"): ParsedVoiceWorkLog {
   const raw = (transcript || "").trim();
   const lower = raw.toLowerCase();
   const today = new Date().toISOString().split("T")[0];
@@ -44,11 +44,36 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   }
 
   // 2. Organization Detection
-  let organization = "Galactic 3D";
-  if (/\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|syllabus|curriculum|lab)\b/i.test(lower)) {
-    organization = "Cambridge Institute of Technology";
-  } else if (/\b(galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|model)\b/i.test(lower)) {
-    organization = "Galactic 3D";
+  let organization = defaultOrganization || "Galactic 3D";
+
+  // Check explicit headers first e.g. "Work Done For: Cambridge", "Workplace: Galactic 3D", "Organization: CIT", "Company: Cambridge", "For: Cambridge"
+  const explicitOrgMatch = raw.match(/\b(?:work\s*(?:done\s*)?for|workplace|company|organization|org|institution|client|for)[:\-–\s]+([^\n,.]+)/i);
+  if (explicitOrgMatch) {
+    const orgTarget = explicitOrgMatch[1].trim().toLowerCase();
+    if (orgTarget.includes("cambridge") || orgTarget.includes("cit") || orgTarget.includes("college") || orgTarget.includes("institute") || orgTarget.includes("university")) {
+      organization = "Cambridge Institute of Technology";
+    } else if (orgTarget.includes("galactic") || orgTarget.includes("g3d") || orgTarget.includes("electric")) {
+      organization = "Galactic 3D";
+    }
+  } else {
+    // Academic / Cambridge Keywords
+    const isCambridge = /\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|academics|syllabus|curriculum|lab|semester|course|courses|assignment|assignments|waste\s*management|studies|department|degree|grade)\b/i.test(lower);
+    // Galactic / Tech / 3D Keywords
+    const isGalactic = /\b(galactic|electric\s*3d|galaxy|g3d|\b3d\b|blender|three\.?js|webgl|unity|render|rendering|cad|aerospace|bass|bass aerospace|stl|obj|print|printer|printing|filament)\b/i.test(lower);
+
+    if (isCambridge && !isGalactic) {
+      organization = "Cambridge Institute of Technology";
+    } else if (isGalactic && !isCambridge) {
+      organization = "Galactic 3D";
+    } else if (isCambridge && isGalactic) {
+      const cambridgeIndex = lower.search(/\b(cambridge|cit)\b/i);
+      const galacticIndex = lower.search(/\b(galactic|g3d|electric\s*3d)\b/i);
+      if (cambridgeIndex !== -1 && (galacticIndex === -1 || cambridgeIndex < galacticIndex)) {
+        organization = "Cambridge Institute of Technology";
+      } else {
+        organization = "Galactic 3D";
+      }
+    }
   }
 
   // 2. Category Detection
@@ -228,7 +253,7 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   let title = "";
 
   // A. Check for explicit title / subject prefixes
-  const explicitTitleMatch = raw.match(/^(?:title|task|subject|meeting|activity|deliverable)[:\-–]\s*([^\n]+)/i);
+  const explicitTitleMatch = raw.match(/^(?:title|task|subject|meeting|activity|deliverable)[:\-–]\s*([^\n]+)/im);
   if (explicitTitleMatch && explicitTitleMatch[1].trim().length > 3) {
     title = explicitTitleMatch[1].trim();
   } else if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
@@ -236,11 +261,33 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   } else if (/bass\s*aerospace/i.test(lower)) {
     title = "Meeting with Bass Aerospace";
   } else {
-    // B. Extract the first sentence / clause
-    const firstLine = raw.split(/[\n.!?]/)[0].trim();
+    // Check if there is an explicit summary or description line
+    const summaryLineMatch = raw.match(/^(?:summary|description|work(?:\s*done)?|details?)[:\-–]\s*([^\n]+)/im);
+
+    // Filter out metadata lines (Date:, Time:, Workplace:, Work Done For:, Hours:, etc.)
+    const meaningfulLines = raw
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => {
+        if (!l || l.length < 3) return false;
+        if (/^(?:date|time|workplace|work\s*(?:done\s*)?for|organization|org|company|hours?|status|priority|category)[:\-–]/i.test(l)) {
+          return false;
+        }
+        return true;
+      });
+
+    let candidateLine = "";
+    if (summaryLineMatch && summaryLineMatch[1].trim().length >= 5) {
+      candidateLine = summaryLineMatch[1].trim();
+    } else if (meaningfulLines.length > 0) {
+      candidateLine = meaningfulLines[0];
+    } else {
+      candidateLine = raw.split(/[\n.!?]/)[0].trim();
+    }
 
     // Strip leading conversational and action verbs
-    let cleaned = firstLine
+    let cleaned = candidateLine
+      .replace(/^(?:summary|description|work(?:\s*done)?|details?)[:\-–]\s*/i, "")
       .replace(/^(participated in (the|a)?|participated (the|a)?|attended (the|a)?|conducted (the|a)?|worked on (the|a)?|working on (the|a)?|built (the|a)?|created (the|a)?|developed (the|a)?|fixed (the|a)?|resolved (the|a)?|implemented (the|a)?|reviewed (the|a)?|completed (the|a)?|joined (the|a)?|held (the|a)?|spent time on (the|a)?|today i (was|worked|did|participated in|attended)?|i was working on|we had (the|a)?|had (the|a)?)\s+/i, "")
       .replace(/^(electric\s*3d|galactic\s*3d|cambridge)\s*(was there today|today|there today)?\s*(so was|so i was|i was|was)?\s*/i, "")
       .replace(/\s+(from|between)\s+\d+.*$/i, "")
@@ -256,7 +303,7 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     cleaned = cleaned.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an)\s*$/i, "").trim();
 
     // Format & Title Case
-    if (cleaned.length >= 5) {
+    if (cleaned.length >= 5 && !/^date[:\-–\s]/i.test(cleaned)) {
       // Normalize 'and' to '&' for cleaner titles
       const normalized = cleaned.replace(/\s+and\s+/gi, " & ");
       title = normalized
@@ -267,7 +314,7 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
         })
         .join(" ");
     } else {
-      title = `${category} - ${organization.split(" ")[0]}`;
+      title = `${category} Deliverables - ${organization.split(" ")[0]}`;
     }
   }
 

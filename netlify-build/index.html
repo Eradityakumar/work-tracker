@@ -1566,7 +1566,7 @@
     let isSmartVoiceListening = false;
     let smartVoiceTranscript = "";
 
-    function parseVoiceLocally(transcript) {
+    function parseVoiceLocally(transcript, defaultOrganization = "Galactic 3D") {
       const raw = (transcript || "").trim();
       const lower = raw.toLowerCase();
       const today = new Date().toISOString().split("T")[0];
@@ -1597,11 +1597,32 @@
       }
 
       // 2. Organization Detection
-      let organization = "Galactic 3D";
-      if (/\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|syllabus|curriculum|lab)\b/i.test(lower)) {
-        organization = "Cambridge Institute of Technology";
-      } else if (/\b(galactic|electric\s*3d|galaxy|g3d|3d|blender|three\s*js|webgl|unity|render|cad|aerospace|bass|model)\b/i.test(lower)) {
-        organization = "Galactic 3D";
+      let organization = defaultOrganization || "Galactic 3D";
+      const explicitOrgMatch = raw.match(/\b(?:work\s*(?:done\s*)?for|workplace|company|organization|org|institution|client|for)[:\-–\s]+([^\n,.]+)/i);
+      if (explicitOrgMatch) {
+        const orgTarget = explicitOrgMatch[1].trim().toLowerCase();
+        if (orgTarget.includes("cambridge") || orgTarget.includes("cit") || orgTarget.includes("college") || orgTarget.includes("institute") || orgTarget.includes("university")) {
+          organization = "Cambridge Institute of Technology";
+        } else if (orgTarget.includes("galactic") || orgTarget.includes("g3d") || orgTarget.includes("electric")) {
+          organization = "Galactic 3D";
+        }
+      } else {
+        const isCambridge = /\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|academics|syllabus|curriculum|lab|semester|course|courses|assignment|assignments|waste\s*management|studies|department|degree|grade)\b/i.test(lower);
+        const isGalactic = /\b(galactic|electric\s*3d|galaxy|g3d|\b3d\b|blender|three\.?js|webgl|unity|render|rendering|cad|aerospace|bass|bass aerospace|stl|obj|print|printer|printing|filament)\b/i.test(lower);
+
+        if (isCambridge && !isGalactic) {
+          organization = "Cambridge Institute of Technology";
+        } else if (isGalactic && !isCambridge) {
+          organization = "Galactic 3D";
+        } else if (isCambridge && isGalactic) {
+          const cambridgeIndex = lower.search(/\b(cambridge|cit)\b/i);
+          const galacticIndex = lower.search(/\b(galactic|g3d|electric\s*3d)\b/i);
+          if (cambridgeIndex !== -1 && (galacticIndex === -1 || cambridgeIndex < galacticIndex)) {
+            organization = "Cambridge Institute of Technology";
+          } else {
+            organization = "Galactic 3D";
+          }
+        }
       }
 
       // 2. Category Detection
@@ -1735,7 +1756,7 @@
 
       // 8. Human-Grade Title Generation
       let title = "";
-      const explicitTitleMatch = raw.match(/^(?:title|task|subject|meeting|activity|deliverable)[:\-–]\s*([^\n]+)/i);
+      const explicitTitleMatch = raw.match(/^(?:title|task|subject|meeting|activity|deliverable)[:\-–]\s*([^\n]+)/im);
       if (explicitTitleMatch && explicitTitleMatch[1].trim().length > 3) {
         title = explicitTitleMatch[1].trim();
       } else if (/bass\s*aerospace/i.test(lower) && /order/i.test(lower)) {
@@ -1743,8 +1764,29 @@
       } else if (/bass\s*aerospace/i.test(lower)) {
         title = "Meeting with Bass Aerospace";
       } else {
-        const firstLine = raw.split(/[\n.!?]/)[0].trim();
-        let cleaned = firstLine
+        const summaryLineMatch = raw.match(/^(?:summary|description|work(?:\s*done)?|details?)[:\-–]\s*([^\n]+)/im);
+        const meaningfulLines = raw
+          .split("\n")
+          .map(l => l.trim())
+          .filter(l => {
+            if (!l || l.length < 3) return false;
+            if (/^(?:date|time|workplace|work\s*(?:done\s*)?for|organization|org|company|hours?|status|priority|category)[:\-–]/i.test(l)) {
+              return false;
+            }
+            return true;
+          });
+
+        let candidateLine = "";
+        if (summaryLineMatch && summaryLineMatch[1].trim().length >= 5) {
+          candidateLine = summaryLineMatch[1].trim();
+        } else if (meaningfulLines.length > 0) {
+          candidateLine = meaningfulLines[0];
+        } else {
+          candidateLine = raw.split(/[\n.!?]/)[0].trim();
+        }
+
+        let cleaned = candidateLine
+          .replace(/^(?:summary|description|work(?:\s*done)?|details?)[:\-–]\s*/i, "")
           .replace(/^(participated in (the|a)?|participated (the|a)?|attended (the|a)?|conducted (the|a)?|worked on (the|a)?|working on (the|a)?|built (the|a)?|created (the|a)?|developed (the|a)?|fixed (the|a)?|resolved (the|a)?|implemented (the|a)?|reviewed (the|a)?|completed (the|a)?|joined (the|a)?|held (the|a)?|spent time on (the|a)?|today i (was|worked|did|participated in|attended)?|i was working on|we had (the|a)?|had (the|a)?)\s+/i, "")
           .replace(/^(electric\s*3d|galactic\s*3d|cambridge)\s*(was there today|today|there today)?\s*(so was|so i was|i was|was)?\s*/i, "")
           .replace(/\s+(from|between)\s+\d+.*$/i, "")
@@ -1754,11 +1796,11 @@
         if (preAudience.length >= 8) cleaned = preAudience;
         cleaned = cleaned.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an)\s*$/i, "").trim();
 
-        if (cleaned.length >= 5) {
+        if (cleaned.length >= 5 && !/^date[:\-–\s]/i.test(cleaned)) {
           const normalized = cleaned.replace(/\s+and\s+/gi, " & ");
           title = normalized.split(" ").map(w => w === "&" ? "&" : (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
         } else {
-          title = category + " - " + organization.split(" ")[0];
+          title = category + " Deliverables - " + organization.split(" ")[0];
         }
       }
 
@@ -1791,7 +1833,11 @@
     function applyVoiceAutoFill(data) {
       if (!data) return;
       if (data.organization) {
-        const orgRadio = document.querySelector(`input[name="organization"][value="${data.organization}"]`);
+        const orgStr = String(data.organization).toLowerCase();
+        const targetOrg = (orgStr.includes("cambridge") || orgStr.includes("cit") || orgStr.includes("college") || orgStr.includes("institute") || orgStr.includes("university"))
+          ? "Cambridge Institute of Technology"
+          : "Galactic 3D";
+        const orgRadio = document.querySelector(`input[name="organization"][value="${targetOrg}"]`);
         if (orgRadio) orgRadio.checked = true;
       }
       if (data.title) document.getElementById('taskTitle').value = data.title;
@@ -1812,7 +1858,7 @@
       if (data.learnings !== undefined && document.getElementById('taskLearnings')) document.getElementById('taskLearnings').value = data.learnings;
     }
 
-    async function parseWithGeminiOnline(transcript) {
+    async function parseWithGeminiOnline(transcript, defaultOrganization = "Galactic 3D") {
       const geminiKey = localStorage.getItem("worktrail_gemini_key") || localStorage.getItem("worktrail_ai_key");
       if (!geminiKey) return null;
       const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash"];
@@ -1841,7 +1887,12 @@
 
 Rules:
 1. Date: Look carefully for any date specified in the text (e.g. "Date: 15-09-2026", "15/09/2026", "2026-09-15", "yesterday", "Sep 15"). Format it strictly as standard ISO "YYYY-MM-DD" (e.g. "15-09-2026" becomes "2026-09-15"). Only if no date is mentioned, use "${today}".
-2. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
+2. Organization: CRITICAL WORKPLACE DETECTION (Strictly either "Galactic 3D" or "Cambridge Institute of Technology"):
+- Explicit headers: If text states "Work Done For: Cambridge", "Workplace: Cambridge", "Company: Cambridge", "CIT", "Cambridge Institute of Technology", "Campus:", "For: Cambridge" -> strictly "Cambridge Institute of Technology".
+- If text states "Work Done For: Galactic", "Workplace: Galactic", "Company: Galactic 3D", "For: Galactic" -> strictly "Galactic 3D".
+- Academic context: If text mentions college, campus, study, course, coursework, syllabus, curriculum, lecture, lab, student, exam, assignment, professor, department, semester, academic -> strictly "Cambridge Institute of Technology".
+- Industrial 3D / Tech context: If text mentions 3D printing, CAD, Blender, Three.js, WebGL, models, aerospace, manufacturing, filaments -> strictly "Galactic 3D".
+- Default: "${defaultOrganization}".
 3. Title: Professional Title Case.
 
 Work Summary:
@@ -1894,13 +1945,14 @@ ${transcript}`
         sub.className = "text-[11px] sm:text-xs text-indigo-600 font-bold mt-0.5 animate-pulse";
       }
 
+      const currentOrg = document.querySelector('input[name="organization"]:checked')?.value || "Galactic 3D";
       let parsed = null;
       try {
-        parsed = await parseWithGeminiOnline(val);
+        parsed = await parseWithGeminiOnline(val, currentOrg);
       } catch (err) {}
 
       if (!parsed) {
-        parsed = parseVoiceLocally(val);
+        parsed = parseVoiceLocally(val, currentOrg);
       }
 
       applyVoiceAutoFill(parsed);
@@ -2027,7 +2079,8 @@ ${transcript}`
       lucide.createIcons();
 
       if (smartVoiceTranscript && smartVoiceTranscript.trim()) {
-        const parsed = parseVoiceLocally(smartVoiceTranscript);
+        const currentOrg = document.querySelector('input[name="organization"]:checked')?.value || "Galactic 3D";
+        const parsed = parseVoiceLocally(smartVoiceTranscript, currentOrg);
         applyVoiceAutoFill(parsed);
       }
     }

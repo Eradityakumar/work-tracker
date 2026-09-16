@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const parsed = await parseVoiceWorkLog(rawInput, apiKey);
+    const defaultOrg = body.currentOrganization || body.organization;
+    const parsed = await parseVoiceWorkLog(rawInput, apiKey, defaultOrg);
     return NextResponse.json({ success: true, data: parsed });
   } catch (err: any) {
     console.error("Parse voice error:", err);

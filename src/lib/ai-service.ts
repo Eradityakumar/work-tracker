@@ -70,18 +70,18 @@ function buildExactItemizedAudit(tasks: TaskItem[]): string {
           const dur = formatDuration(getTaskMinutes(t));
 
           let block = `#### ${idx + 1}. ${orgIcon} [${org}] ${t.title}\n`;
-          block += `- **Time & Duration:** ${t.startTime || "09:00"} – ${t.endTime || "10:30"} (${dur})\n`;
-          block += `- **Category:** ${t.category || "Development"} | **Priority:** ${t.priority || "MEDIUM"} | **Status:** ${t.status || "COMPLETED"}\n`;
-          block += `- **Deliverable Description:** ${t.description || "Work deliverables completed."}\n`;
+          block += `• Time: ${t.startTime || "09:00"} – ${t.endTime || "10:30"} (${dur})\n`;
+          block += `• Category: ${t.category || "Development"} | Priority: ${t.priority || "MEDIUM"} | Status: ${t.status || "COMPLETED"}\n`;
+          block += `• Deliverable: ${t.description || "Work deliverables completed."}\n`;
 
           if (t.notes && t.notes.trim()) {
-            block += `- **Notes / Blockers:** ${t.notes.trim()}\n`;
+            block += `• Notes / Blockers: ${t.notes.trim()}\n`;
           }
           if (t.learnings && t.learnings.trim()) {
-            block += `- **Learnings & Key Insights:** ${t.learnings.trim()}\n`;
+            block += `• Key Insights: ${t.learnings.trim()}\n`;
           }
           if (t.tags && t.tags.trim()) {
-            block += `- **Tags:** \`${t.tags.trim()}\`\n`;
+            block += `• Tags: ${t.tags.trim()}\n`;
           }
           return block;
         })
@@ -191,7 +191,7 @@ ${tasks.map((t, idx) => `${idx + 1}. [${t.organization || "Galactic 3D"}] "${t.t
 
 ${journals.length > 0 ? `JOURNALS:\n${journals.map((j) => `- Reflection: ${j.reflection}`).join("\n")}` : ""}
 
-Provide a clean, executive summary strictly highlighting the real deliverables above.`;
+Provide a clean, executive summary strictly highlighting the real deliverables above. Keep formatting clean, elegant, and corporate without excessive asterisks or markdown clutter.`;
 
       const text = await callGeminiGenerate(prompt, geminiKey);
       if (text) {
@@ -363,7 +363,7 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above.`;
+Provide an executive summary and highlights strictly reflecting ONLY the exact deliverables above. Keep formatting clean and highly professional. Avoid repetitive asterisks or nested bold markers; use clean bullet points and clear corporate prose.`;
 
       const aiOverview = await callGeminiGenerate(prompt, geminiKey);
       if (aiOverview) {
@@ -505,7 +505,7 @@ ${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galacti
    Notes: ${t.notes || "None"}
    Learnings: ${t.learnings || "None"}`).join("\n\n")}
 
-Provide an executive review strictly reflecting ONLY the exact deliverables above.`;
+Provide an executive review strictly reflecting ONLY the exact deliverables above. Keep formatting clean, elegant, and professional without repetitive asterisks or nested bold markers.`;
 
       const aiOverview = await callGeminiGenerate(prompt, geminiKey);
       if (aiOverview) {
@@ -697,7 +697,11 @@ export async function callGeminiGenerate(
   return null;
 }
 
-export async function parseWithGemini(transcript: string, apiKey: string): Promise<ParsedVoiceWorkLog | null> {
+export async function parseWithGemini(
+  transcript: string,
+  apiKey: string,
+  defaultOrganization = "Galactic 3D"
+): Promise<ParsedVoiceWorkLog | null> {
   try {
     const today = new Date().toISOString().split("T")[0];
     const prompt = `You are WorkTrail AI's intelligent work log parser.
@@ -720,7 +724,12 @@ Return ONLY a valid raw JSON object with these exact keys:
 
 Rules:
 1. Date: CRITICAL! Look carefully for any date specified in the text (e.g. "Date: 15-09-2026", "15/09/2026", "2026-09-15", "yesterday", "Sep 15"). Format it strictly as standard ISO "YYYY-MM-DD" (e.g. "15-09-2026" becomes "2026-09-15"). Only if no date is mentioned in the text at all, use "${today}".
-2. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
+2. Organization: CRITICAL WORKPLACE DETECTION (Choose strictly either "Galactic 3D" or "Cambridge Institute of Technology"):
+- Explicit headers take priority: If the text states "Work Done For: Cambridge", "Workplace: Cambridge", "Company: Cambridge", "CIT", "Cambridge Institute of Technology", "[Cambridge]", "For: Cambridge", "Campus:" -> strictly "Cambridge Institute of Technology".
+- If the text states "Work Done For: Galactic", "Workplace: Galactic", "Company: Galactic 3D", "[Galactic]", "For: Galactic" -> strictly "Galactic 3D".
+- Academic/Education context: If the text mentions college, campus, study, course, coursework, syllabus, curriculum, lecture, lab, student, exam, assignment, professor, department, semester, academic research -> strictly "Cambridge Institute of Technology".
+- Industrial 3D / Commercial context: If the text mentions 3D printing, CAD, Blender, Three.js, WebGL, models, aerospace, manufacturing, client production, filaments, resin -> strictly "Galactic 3D".
+- If neither is mentioned, use "${defaultOrganization}".
 3. Title: Professional Title Case. Never end with trailing prepositions or conjunctions (never "and", "with", "or").
 4. Status: If attended, held, reviewed, fixed, finished, or delivered -> "COMPLETED". If ongoing -> "IN_PROGRESS".
 5. Notes: Fill with action items, assigned tasks, or blockers.
@@ -748,8 +757,15 @@ User's Work Summary:
       }
     }
 
+    // Strictly normalize organization
+    const org = String(parsed.organization || "").toLowerCase();
+    const isCambridge = org.includes("cambridge") || org.includes("cit") || org.includes("college") || org.includes("institute") || org.includes("university");
+    const detectedOrg = isCambridge
+      ? "Cambridge Institute of Technology"
+      : (org.includes("galactic") || org.includes("3d") ? "Galactic 3D" : defaultOrganization);
+
     return {
-      organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
+      organization: detectedOrg,
       title: parsed.title || "Daily Work Deliverables",
       description: parsed.description || transcript,
       category: ["Meeting", "Development", "Design", "Research", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
@@ -770,7 +786,8 @@ User's Work Summary:
 
 export async function parseVoiceWorkLog(
   transcript: string,
-  customApiKey?: string
+  customApiKey?: string,
+  defaultOrganization = "Galactic 3D"
 ): Promise<ParsedVoiceWorkLog> {
   const cleanTranscript = (transcript || "").trim();
   const hasCustom = Boolean(customApiKey && customApiKey.trim().length > 0);
@@ -782,7 +799,7 @@ export async function parseVoiceWorkLog(
     process.env.GOOGLE_API_KEY;
 
   if (geminiKey && cleanTranscript.length > 5) {
-    const geminiParsed = await parseWithGemini(cleanTranscript, geminiKey);
+    const geminiParsed = await parseWithGemini(cleanTranscript, geminiKey, defaultOrganization);
     if (geminiParsed) return geminiParsed;
   }
 
@@ -858,5 +875,5 @@ Extract structured fields and return ONLY a raw JSON object with:
   }
 
   // 3. Fallback to advanced semantic local NLP parser
-  return parseVoiceLocally(cleanTranscript);
+  return parseVoiceLocally(cleanTranscript, defaultOrganization);
 }

@@ -67,7 +67,20 @@ export function TaskFormModal({
   const transcriptRef = React.useRef("");
 
   const applyParsedData = (data: ParsedVoiceWorkLog) => {
-    if (data.organization) setOrganization(data.organization);
+    if (data.organization) {
+      const orgStr = String(data.organization).toLowerCase();
+      if (
+        orgStr.includes("cambridge") ||
+        orgStr.includes("cit") ||
+        orgStr.includes("college") ||
+        orgStr.includes("institute") ||
+        orgStr.includes("university")
+      ) {
+        setOrganization("Cambridge Institute of Technology");
+      } else {
+        setOrganization("Galactic 3D");
+      }
+    }
     if (data.title) setTitle(data.title);
     if (data.description) setDescription(data.description);
     if (data.category) setCategory(data.category);
@@ -104,7 +117,12 @@ export function TaskFormModal({
       const res = await fetch("/api/ai/parse-voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: targetText, transcript: targetText, apiKey: savedKey }),
+        body: JSON.stringify({
+          summary: targetText,
+          transcript: targetText,
+          currentOrganization: organization,
+          apiKey: savedKey,
+        }),
       });
 
       if (res.ok) {
@@ -117,12 +135,12 @@ export function TaskFormModal({
       }
 
       // Fallback to intelligent local parser
-      const localParsed = parseVoiceLocally(targetText);
+      const localParsed = parseVoiceLocally(targetText, organization);
       applyParsedData(localParsed);
       toast.success("✨ Auto-filled all spaces from summary!");
     } catch (err: any) {
       console.warn("AI parsing fallback to local parser:", err);
-      const localParsed = parseVoiceLocally(targetText);
+      const localParsed = parseVoiceLocally(targetText, organization);
       applyParsedData(localParsed);
       toast.success("✨ Auto-filled all spaces from summary!");
     } finally {
@@ -487,6 +505,40 @@ export function TaskFormModal({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Quick Target Workplace Indicator */}
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/30 flex-wrap">
+            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+              <span>Auto-Detected Workplace:</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setOrganization("Galactic 3D")}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                  organization === "Galactic 3D"
+                    ? "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/50 shadow-xs ring-1 ring-cyan-500/30"
+                    : "bg-background/70 text-muted-foreground border-border/50 hover:text-foreground hover:bg-background"
+                }`}
+              >
+                <span>🚀 Galactic 3D</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrganization("Cambridge Institute of Technology")}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                  organization === "Cambridge Institute of Technology"
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/50 shadow-xs ring-1 ring-amber-500/30"
+                    : "bg-background/70 text-muted-foreground border-border/50 hover:text-foreground hover:bg-background"
+                }`}
+              >
+                <span>🎓 Cambridge Institute of Technology</span>
+              </button>
+            </div>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline italic">
+              (Switches automatically from text)
+            </span>
           </div>
 
           {voiceTranscript && (
