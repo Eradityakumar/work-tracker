@@ -80,10 +80,10 @@ export function parseVoiceLocally(transcript: string, defaultOrganization = "Gal
   let category = "Development";
   if (/\b(meet|meeting|meetings|call|sync|discussion|standup|client|huddle|interview|touchpoint|project review|coordination meeting|review meeting)\b/i.test(lower)) {
     category = "Meeting";
+  } else if (/\b(research|researched|researching|study|studied|studying|survey|explore|explored|investigate|investigated|benchmark|paper|reading|feasibility)\b/i.test(lower)) {
+    category = "Research";
   } else if (/\b(design|figma|\bui\b|\bux\b|mockup|wireframe|layout|css|styling|theme|assets|shader|texture)\b/i.test(lower)) {
     category = "Design";
-  } else if (/\b(research|study|survey|explore|investigate|benchmark|paper|reading|feasibility)\b/i.test(lower)) {
-    category = "Research";
   } else if (/\b(test|testing|qa|verify|validation|cypress|jest|audit)\b/i.test(lower)) {
     category = "Testing";
   } else if (/\b(doc|documentation|docs|readme|writeup|guide|manual|report|specification)\b/i.test(lower)) {
@@ -112,30 +112,50 @@ export function parseVoiceLocally(transcript: string, defaultOrganization = "Gal
     status = "COMPLETED";
   }
 
-  // 5. Time extraction (e.g. "from 9 to 11", "10am to 12pm", "10 to 1")
+  // 5. Time extraction (support "2:00 PM – 4:00 PM", "10am to 12pm", en-dash, em-dash, etc.)
   let startTime = "09:00";
   let endTime = "11:00";
-  const timeRangeMatch = lower.match(/(?:from\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|-|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+
+  // Check explicit Time line first e.g. "Time: 2:00 PM – 4:00 PM"
+  const explicitTimeMatch = raw.match(/\b(?:time|timing|hours?)[:\-–—\s]+([0-9]{1,2}(?::[0-9]{2})?\s*(?:am|pm)?\s*(?:–|—|-|to|until|till)\s*[0-9]{1,2}(?::[0-9]{2})?\s*(?:am|pm)?)/i);
+  const timeSearchString = explicitTimeMatch ? explicitTimeMatch[1] : lower;
+
+  const timeRangeMatch = timeSearchString.match(/(?:from\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:–|—|-|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
 
   if (timeRangeMatch) {
-    let sH = parseInt(timeRangeMatch[1], 10);
-    const sM = timeRangeMatch[2] ? parseInt(timeRangeMatch[2], 10) : 0;
-    const sMeridiem = timeRangeMatch[3]?.toLowerCase();
+    const matchedFull = timeRangeMatch[0];
+    const isPartOfDate = !explicitTimeMatch && (
+      raw.includes(`${matchedFull}-`) ||
+      raw.includes(`${matchedFull}/`) ||
+      /\b\d{4}\b/.test(matchedFull) ||
+      /\bdate[:\-–—\s]+/i.test(raw.substring(Math.max(0, raw.indexOf(matchedFull) - 15), raw.indexOf(matchedFull)))
+    );
 
-    let eH = parseInt(timeRangeMatch[4], 10);
-    const eM = timeRangeMatch[5] ? parseInt(timeRangeMatch[5], 10) : 0;
-    const eMeridiem = timeRangeMatch[6]?.toLowerCase();
+    if (!isPartOfDate) {
+      let sH = parseInt(timeRangeMatch[1], 10);
+      const sM = timeRangeMatch[2] ? parseInt(timeRangeMatch[2], 10) : 0;
+      const sMeridiem = timeRangeMatch[3]?.toLowerCase();
 
-    if (sMeridiem === "pm" && sH < 12) sH += 12;
-    if (eMeridiem === "pm" && eH < 12) eH += 12;
-    if (!eMeridiem && !sMeridiem) {
-      if (eH < sH) eH += 12;
-      else if (sH < 7) sH += 12;
-      if (eH < 7) eH += 12;
+      let eH = parseInt(timeRangeMatch[4], 10);
+      const eM = timeRangeMatch[5] ? parseInt(timeRangeMatch[5], 10) : 0;
+      const eMeridiem = timeRangeMatch[6]?.toLowerCase();
+
+      if (sMeridiem === "pm" && sH < 12) sH += 12;
+      if (sMeridiem === "am" && sH === 12) sH = 0;
+      if (eMeridiem === "pm" && eH < 12) eH += 12;
+      if (eMeridiem === "am" && eH === 12) eH = 0;
+
+      if (!eMeridiem && !sMeridiem) {
+        if (eH < sH) eH += 12;
+        else if (sH < 7) sH += 12;
+        if (eH < 7) eH += 12;
+      }
+
+      if (sH >= 0 && sH <= 23 && eH >= 0 && eH <= 23) {
+        startTime = `${String(sH).padStart(2, "0")}:${String(sM).padStart(2, "0")}`;
+        endTime = `${String(eH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
+      }
     }
-
-    startTime = `${String(sH).padStart(2, "0")}:${String(sM).padStart(2, "0")}`;
-    endTime = `${String(eH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`;
   }
 
   // Break text into sentences for contextual extraction
@@ -293,17 +313,25 @@ export function parseVoiceLocally(transcript: string, defaultOrganization = "Gal
       .replace(/\s+(from|between)\s+\d+.*$/i, "")
       .trim();
 
-    // Strip audience / context tails (e.g. "with the development team and stakeholders", "to discuss XYZ")
-    const preAudience = cleaned.replace(/\s+\b(with|for|regarding|about|to discuss|in order to|aimed at|where we|as part of|across)\b.*$/i, "").trim();
+    // If starts with "researched"
+    if (/^researched\s+/i.test(cleaned)) {
+      cleaned = cleaned.replace(/^researched\s+/i, "");
+      if (!/research/i.test(cleaned)) {
+        cleaned = `${cleaned} Research`;
+      }
+    }
+
+    // Strip audience / context tails and "including...", "such as..."
+    const preAudience = cleaned.replace(/\s+\b(with|for|regarding|about|to discuss|in order to|aimed at|where we|as part of|across|including|such as)\b.*$/i, "").trim();
     if (preAudience.length >= 8) {
       cleaned = preAudience;
     }
 
-    // Strip trailing conjunctions/prepositions (e.g., "and", "or", "with", "the", "for")
-    cleaned = cleaned.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an)\s*$/i, "").trim();
+    // Strip trailing conjunctions/prepositions
+    cleaned = cleaned.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an|including|as)\s*$/i, "").trim();
 
     // Format & Title Case
-    if (cleaned.length >= 5 && !/^date[:\-–\s]/i.test(cleaned)) {
+    if (cleaned.length >= 5 && !/^date[:\-–—\s]/i.test(cleaned)) {
       // Normalize 'and' to '&' for cleaner titles
       const normalized = cleaned.replace(/\s+and\s+/gi, " & ");
       title = normalized
@@ -330,13 +358,28 @@ export function parseVoiceLocally(transcript: string, defaultOrganization = "Gal
       }
     }
     title = shortTitle || title.substring(0, 60);
-    title = title.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an|&)\s*$/i, "").trim();
+    title = title.replace(/\s+\b(and|or|the|with|for|in|at|to|of|a|an|&|including|as)\s*$/i, "").trim();
   }
+
+  // Clean description by stripping metadata headers
+  const cleanDescriptionLines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => {
+      if (!l || l.length < 2) return false;
+      if (/^(?:date|time|timing|hours?|workplace|work\s*(?:done\s*)?for|organization|org|company|institution|status|priority|category)[:\-–—]/i.test(l)) {
+        return false;
+      }
+      return true;
+    });
+
+  let cleanDesc = cleanDescriptionLines.join("\n").trim();
+  cleanDesc = cleanDesc.replace(/^(?:summary|description|work(?:\s*done)?|details?)[:\-–—\s]*/i, "").trim();
 
   return {
     organization,
     title,
-    description: raw || "Completed work deliverables.",
+    description: cleanDesc || raw || "Completed work deliverables.",
     category,
     date: extractedDate,
     startTime,
