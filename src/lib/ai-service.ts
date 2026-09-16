@@ -476,7 +476,44 @@ Provide an executive review strictly reflecting ONLY the exact deliverables abov
         return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
       }
     } catch (e) {
-      console.warn("OpenAI monthly report failed, fallback:", e);
+      console.warn("OpenAI monthly report failed, trying Gemini / fallback:", e);
+    }
+  }
+
+  // Check Gemini API for monthly report
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiKey) {
+    try {
+      const prompt = `You are WorkTrail AI generating an EXACT, factual Monthly Work Review for ${monthName}.
+
+CRITICAL INSTRUCTION:
+- You must ONLY describe the EXACT work deliverables, tasks, organizations, notes, and learnings provided below.
+- DO NOT invent, assume, or hallucinate any tasks, hypothetical projects, or generic corporate filler.
+- Be precise, professional, and 100% faithful to the user's recorded tasks.
+
+DATA:
+- Month: ${monthName}
+- Total Tasks: ${tasks.length} (Completed: ${completedTasks.length}, In Progress: ${inProgressTasks.length})
+- Total Tracked Time: ${hoursWorked} hrs
+- Workplace Split:
+  * Galactic 3D: ${+(galacticMins / 60).toFixed(1)} hrs (${galacticTasks.length} tasks)
+  * Cambridge Institute of Technology: ${+(cambridgeMins / 60).toFixed(1)} hrs (${cambridgeTasks.length} tasks)
+
+TASKS LOGGED:
+${tasks.map((t, i) => `${i + 1}. [Date: ${t.date}] [${t.organization || "Galactic 3D"}] "${t.title}" | Category: ${t.category} | Time: ${t.startTime}-${t.endTime} | Status: ${t.status}
+   Description: ${t.description}
+   Notes: ${t.notes || "None"}
+   Learnings: ${t.learnings || "None"}`).join("\n\n")}
+
+Provide an executive review strictly reflecting ONLY the exact deliverables above.`;
+
+      const aiOverview = await callGeminiGenerate(prompt, geminiKey);
+      if (aiOverview) {
+        const fullReport = `${aiOverview}\n\n---\n\n## 📝 Exact Itemized Monthly Audit\n\n${itemizedAudit}`;
+        return { summary: fullReport, hoursWorked, tasksCompleted: completedTasks.length, productivityScore };
+      }
+    } catch (ge) {
+      console.warn("Gemini monthly report failed:", ge);
     }
   }
 
@@ -671,7 +708,7 @@ Return ONLY a valid raw JSON object with these exact keys:
   "title": "Concise, professional title (3-7 words, Title Cased, e.g. Daily Project Review & Coordination Meeting)",
   "description": "Clean, well-written detailed description of deliverables worked on",
   "category": "Meeting" | "Development" | "Design" | "Research" | "Testing" | "Documentation" | "Other",
-  "date": "${today}",
+  "date": "YYYY-MM-DD",
   "startTime": "HH:MM" (e.g. "09:00"),
   "endTime": "HH:MM" (e.g. "10:30"),
   "priority": "HIGH" | "MEDIUM" | "LOW",
@@ -682,12 +719,13 @@ Return ONLY a valid raw JSON object with these exact keys:
 }
 
 Rules:
-1. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
-2. Title: Professional Title Case. Never end with trailing prepositions or conjunctions (never "and", "with", "or").
-3. Status: If attended, held, reviewed, fixed, finished, or delivered -> "COMPLETED". If ongoing -> "IN_PROGRESS".
-4. Notes: Fill with action items, assigned tasks, or blockers.
-5. Learnings: Fill with key takeaways, evaluated decisions, or milestones.
-6. Tags: 3 to 6 relevant technical/contextual tags.
+1. Date: CRITICAL! Look carefully for any date specified in the text (e.g. "Date: 15-09-2026", "15/09/2026", "2026-09-15", "yesterday", "Sep 15"). Format it strictly as standard ISO "YYYY-MM-DD" (e.g. "15-09-2026" becomes "2026-09-15"). Only if no date is mentioned in the text at all, use "${today}".
+2. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
+3. Title: Professional Title Case. Never end with trailing prepositions or conjunctions (never "and", "with", "or").
+4. Status: If attended, held, reviewed, fixed, finished, or delivered -> "COMPLETED". If ongoing -> "IN_PROGRESS".
+5. Notes: Fill with action items, assigned tasks, or blockers.
+6. Learnings: Fill with key takeaways, evaluated decisions, or milestones.
+7. Tags: 3 to 6 relevant technical/contextual tags.
 
 User's Work Summary:
 "${transcript.replace(/"/g, '\\"')}"`;
@@ -698,12 +736,24 @@ User's Work Summary:
     const cleanJson = rawText.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
     const parsed = JSON.parse(cleanJson);
 
+    // Normalize date to YYYY-MM-DD
+    let normalizedDate = today;
+    if (parsed.date) {
+      const d = String(parsed.date).trim();
+      const dmy = d.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmy) {
+        normalizedDate = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        normalizedDate = d;
+      }
+    }
+
     return {
       organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
       title: parsed.title || "Daily Work Deliverables",
       description: parsed.description || transcript,
       category: ["Meeting", "Development", "Design", "Research", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
-      date: parsed.date || today,
+      date: normalizedDate,
       startTime: parsed.startTime || "09:00",
       endTime: parsed.endTime || "10:30",
       priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",
@@ -756,7 +806,7 @@ Extract structured fields and return ONLY a raw JSON object with:
 - title: concise, professional title (3-7 words, Title Cased, e.g. Daily Project Review & Coordination Meeting)
 - description: clear, well-phrased summary of deliverables worked on
 - category: one of ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"]
-- date: YYYY-MM-DD (current date)
+- date: strictly in YYYY-MM-DD format (extract from user's summary if mentioned like "Date: 15-09-2026", "yesterday", or default to current date)
 - startTime: 24h format HH:MM (e.g. "09:00")
 - endTime: 24h format HH:MM (e.g. "10:30")
 - priority: "HIGH", "MEDIUM", or "LOW"
@@ -776,12 +826,23 @@ Extract structured fields and return ONLY a raw JSON object with:
 
       const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
       if (parsed && parsed.title) {
+        let openAiDate = new Date().toISOString().split("T")[0];
+        if (parsed.date) {
+          const d = String(parsed.date).trim();
+          const dmy = d.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+          if (dmy) {
+            openAiDate = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            openAiDate = d;
+          }
+        }
+
         return {
           organization: parsed.organization === "Cambridge Institute of Technology" ? "Cambridge Institute of Technology" : "Galactic 3D",
           title: parsed.title,
           description: parsed.description || cleanTranscript,
           category: ["Development", "Design", "Research", "Meeting", "Testing", "Documentation", "Other"].includes(parsed.category) ? parsed.category : "Development",
-          date: parsed.date || new Date().toISOString().split("T")[0],
+          date: openAiDate,
           startTime: parsed.startTime || "09:00",
           endTime: parsed.endTime || "10:30",
           priority: ["HIGH", "MEDIUM", "LOW"].includes(parsed.priority) ? parsed.priority : "MEDIUM",

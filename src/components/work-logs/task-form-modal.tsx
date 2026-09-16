@@ -71,6 +71,14 @@ export function TaskFormModal({
     if (data.title) setTitle(data.title);
     if (data.description) setDescription(data.description);
     if (data.category) setCategory(data.category);
+    if (data.date) {
+      let d = data.date.trim();
+      const dmy = d.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmy) {
+        d = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+      }
+      setDate(d);
+    }
     if (data.startTime) setStartTime(data.startTime);
     if (data.endTime) setEndTime(data.endTime);
     if (data.priority) setPriority(data.priority);

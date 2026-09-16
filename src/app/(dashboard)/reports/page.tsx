@@ -20,10 +20,194 @@ import {
   TrendingUp,
   Copy,
   Check,
+  Printer,
+  ShieldCheck,
+  Code,
+  Award,
+  Lightbulb,
+  AlertCircle,
+  Building2,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 import jsPDF from "jspdf";
+import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
+
+function FormattedReportView({ content, tasks }: { content: string; tasks?: any[] }) {
+  const sections = React.useMemo(() => {
+    if (!content) return [];
+    const lines = content.split("\n");
+    const parsed: { title: string; level: number; lines: string[] }[] = [];
+    let current = { title: "Overview", level: 1, lines: [] as string[] };
+
+    for (const line of lines) {
+      if (line.startsWith("## ")) {
+        if (current.lines.length > 0 || current.title !== "Overview") {
+          parsed.push(current);
+        }
+        current = { title: line.replace(/^##\s+/, "").replace(/^[^\w\s]+/, "").trim(), level: 2, lines: [] };
+      } else if (line.startsWith("### ")) {
+        if (current.lines.length > 0) {
+          parsed.push(current);
+        }
+        current = { title: line.replace(/^###\s+/, "").replace(/^[^\w\s]+/, "").trim(), level: 3, lines: [] };
+      } else {
+        current.lines.push(line);
+      }
+    }
+    if (current.lines.length > 0) parsed.push(current);
+    return parsed;
+  }, [content]);
+
+  return (
+    <div className="space-y-4 text-slate-800 dark:text-slate-100">
+      {tasks && tasks.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3 border-b border-border pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                <Layers className="h-4 w-4" />
+              </span>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Itemized Work Deliverables ({tasks.length})
+                </h4>
+                <p className="text-[11px] text-muted-foreground">Chronological audit of deliverables</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-[10px] font-semibold">
+              {tasks.filter((t) => t.status === "COMPLETED").length} Completed
+            </Badge>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                  <th className="py-2 px-2.5">Date</th>
+                  <th className="py-2 px-2.5">Workplace</th>
+                  <th className="py-2 px-2.5">Deliverable Title</th>
+                  <th className="py-2 px-2.5">Category</th>
+                  <th className="py-2 px-2.5">Time</th>
+                  <th className="py-2 px-2.5 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {tasks.map((task, idx) => {
+                  const isCit = (task.organization || "").includes("Cambridge");
+                  return (
+                    <tr key={task.id || idx} className="hover:bg-muted/20 transition-colors">
+                      <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap font-medium text-[11px]">
+                        {task.date || "—"}
+                      </td>
+                      <td className="py-2 px-2.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          isCit
+                            ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60"
+                            : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60"
+                        }`}>
+                          {isCit ? "🎓 Cambridge" : "🚀 Galactic 3D"}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2.5 font-medium text-foreground max-w-xs truncate">
+                        {task.title}
+                      </td>
+                      <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap text-[11px]">
+                        {task.category || "General"}
+                      </td>
+                      <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap text-[11px]">
+                        {task.startTime || "09:00"} – {task.endTime || "10:30"}
+                      </td>
+                      <td className="py-2 px-2.5 text-right whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          task.status === "COMPLETED"
+                            ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60"
+                            : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/60"
+                        }`}>
+                          {task.status || "COMPLETED"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {sections.map((sec, idx) => {
+        const textContent = sec.lines.join("\n").trim();
+        if (!textContent && !sec.title) return null;
+
+        const isExecutive = sec.title.toLowerCase().includes("executive") || sec.title.toLowerCase().includes("overview");
+        const isLearnings = sec.title.toLowerCase().includes("learning") || sec.title.toLowerCase().includes("insight");
+        const isBlockers = sec.title.toLowerCase().includes("blocker") || sec.title.toLowerCase().includes("challenge") || sec.title.toLowerCase().includes("notes");
+        const isWorkplace = sec.title.toLowerCase().includes("workplace") || sec.title.toLowerCase().includes("distribution");
+
+        return (
+          <div
+            key={idx}
+            className={`rounded-xl border p-4 transition-all ${
+              isExecutive
+                ? "bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200/60 dark:border-indigo-800/50"
+                : isLearnings
+                ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40"
+                : isBlockers
+                ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40"
+                : "bg-card border-border shadow-sm"
+            }`}
+          >
+            {sec.title && sec.title !== "Overview" && (
+              <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-border/50">
+                {isExecutive && <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                {isLearnings && <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                {isBlockers && <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                {isWorkplace && <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                {!isExecutive && !isLearnings && !isBlockers && !isWorkplace && (
+                  <ChevronRight className="h-4 w-4 text-primary" />
+                )}
+                <h4 className="text-xs sm:text-sm font-bold tracking-wide text-foreground">
+                  {sec.title}
+                </h4>
+              </div>
+            )}
+
+            <div className="text-xs sm:text-[13px] leading-relaxed text-foreground/90 space-y-1.5 whitespace-pre-wrap font-sans">
+              {sec.lines.map((l, lIdx) => {
+                const trimmed = l.trim();
+                if (!trimmed) return <div key={lIdx} className="h-1.5" />;
+                if (trimmed.startsWith("---")) return <hr key={lIdx} className="my-2 border-border/60" />;
+
+                if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 pl-1">
+                      <span className="text-primary mt-1 text-[10px]">•</span>
+                      <span className="flex-1">{trimmed.replace(/^[-*]\s+/, "")}</span>
+                    </div>
+                  );
+                }
+
+                if (/^\d+\.\s+/.test(trimmed)) {
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 pl-1 font-medium">
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">{trimmed.match(/^\d+\./)?.[0]}</span>
+                      <span className="flex-1">{trimmed.replace(/^\d+\.\s+/, "")}</span>
+                    </div>
+                  );
+                }
+
+                return <p key={lIdx}>{trimmed}</p>;
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ReportsPage() {
   const { openReportModal, refreshTrigger } = useContext(DashboardContext);
@@ -32,6 +216,8 @@ export default function ReportsPage() {
   const [activeType, setActiveType] = React.useState("ALL");
   const [viewingReport, setViewingReport] = React.useState<any>(null);
   const [copied, setCopied] = React.useState(false);
+
+  const [viewMode, setViewMode] = React.useState<"FORMATTED" | "RAW">("FORMATTED");
 
   const fetchReports = React.useCallback(async () => {
     setLoading(true);
@@ -69,31 +255,269 @@ export default function ReportsPage() {
     }
   };
 
+  const handlePrint = (report: any) => {
+    if (!report) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to print report");
+      return;
+    }
+
+    const tasksHtml = (report.tasks || []).map((t: any, i: number) => `
+      <tr>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${i + 1}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${t.date || ""}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: bold;">${t.organization || "Galactic 3D"}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${t.title || ""}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${t.category || ""}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; white-space: nowrap;">${t.startTime || ""} – ${t.endTime || ""}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: right; font-weight: bold; color: #059669;">${t.status || "COMPLETED"}</td>
+      </tr>
+    `).join("");
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${report.title}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a; line-height: 1.5; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+          .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+          .logo span { color: #4f46e5; }
+          .meta { text-align: right; font-size: 11px; color: #64748b; }
+          .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+          .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+          .kpi-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+          .kpi-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+          .content-block { white-space: pre-wrap; font-size: 12px; line-height: 1.6; margin-bottom: 24px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+          th { background: #0f172a; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
+          @media print { body { padding: 0; } button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="logo">WORKTRAIL <span>AI</span></div>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 4px;">${report.title}</div>
+            <div style="font-size: 11px; color: #64748b;">Period: ${report.periodStart} to ${report.periodEnd}</div>
+          </div>
+          <div class="meta">
+            <div><strong>EXECUTIVE AUDIT</strong></div>
+            <div>Date: ${new Date().toLocaleDateString()}</div>
+            <div>Status: <strong>VERIFIED</strong></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Hours Logged</div>
+            <div class="kpi-val">${report.hoursWorked} hrs</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Tasks Completed</div>
+            <div class="kpi-val">${report.tasksCompleted} deliverables</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Productivity Rating</div>
+            <div class="kpi-val">${report.productivityScore}%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Audit Engine</div>
+            <div class="kpi-val">Gemini AI</div>
+          </div>
+        </div>
+
+        ${tasksHtml ? `
+          <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Chronological Deliverables Audit</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Workplace</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Time</th>
+                <th style="text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tasksHtml}
+            </tbody>
+          </table>
+          <div style="height: 20px;"></div>
+        ` : ""}
+
+        <h3 style="font-size: 13px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Executive Narrative & Summary</h3>
+        <div class="content-block">${report.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+
+        <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
+          <span>WorkTrail AI Performance Tracking System</span>
+          <span>Page 1 of 1 • Strictly Confidential</span>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 400);
+  };
+
   const exportPDF = (report: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Executive Navy Top Banner
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 26, "F");
+
+      doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("WorkTrail AI - Executive Performance Report", 14, 20);
+      doc.setFontSize(13);
+      doc.text("WORKTRAIL AI  |  EXECUTIVE PERFORMANCE REPORT", 14, 12);
 
-      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      doc.text(`Title: ${report.title}`, 14, 28);
-      doc.text(`Type: ${report.type} | Period: ${report.periodStart} to ${report.periodEnd}`, 14, 35);
-      doc.text(`Hours Logged: ${report.hoursWorked} hrs | Tasks Completed: ${report.tasksCompleted}`, 14, 42);
-      doc.text(`Productivity Rating: ${report.productivityScore}%`, 14, 49);
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Official Corporate Deliverables Audit  •  Generated: ${new Date().toLocaleDateString()}`, 14, 19);
 
-      doc.setDrawColor(200, 200, 200);
-      doc.line(14, 55, 196, 55);
+      let y = 36;
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.text(report.title || "Work Performance Audit", 14, y);
 
+      y += 6;
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
-      const splitText = doc.splitTextToSize(report.content, 180);
-      doc.text(splitText, 14, 65);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Reporting Scope: ${report.type}   |   Period: ${report.periodStart} to ${report.periodEnd}`, 14, y);
 
-      doc.save(`${report.title.replace(/\s+/g, "_")}.pdf`);
-      toast.success("PDF exported successfully!");
+      y += 8;
+      const boxW = (pageWidth - 28 - 9) / 4;
+      const boxH = 16;
+      const kpis = [
+        { label: "HOURS LOGGED", val: `${report.hoursWorked} hrs` },
+        { label: "TASKS DONE", val: `${report.tasksCompleted} tasks` },
+        { label: "PRODUCTIVITY", val: `${report.productivityScore}%` },
+        { label: "AI ENGINE", val: "Gemini AI" },
+      ];
+
+      kpis.forEach((kpi, idx) => {
+        const x = 14 + idx * (boxW + 3);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(x, y, boxW, boxH, 1.5, 1.5, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpi.label, x + 3, y + 5);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(kpi.val, x + 3, y + 12);
+      });
+
+      y += boxH + 8;
+
+      const tasks = report.tasks || [];
+      if (tasks.length > 0) {
+        const tableRows = tasks.map((t: any, i: number) => [
+          String(i + 1),
+          t.date || "",
+          t.organization || "Galactic 3D",
+          t.title || "",
+          t.category || "",
+          `${t.startTime || ""} - ${t.endTime || ""}`,
+          t.status || "COMPLETED",
+        ]);
+
+        (doc as any).autoTable({
+          startY: y,
+          head: [["#", "Date", "Workplace", "Deliverable Title", "Category", "Time", "Status"]],
+          body: tableRows,
+          theme: "grid",
+          headStyles: {
+            fillColor: [15, 23, 42],
+            textColor: 255,
+            fontSize: 8,
+            fontStyle: "bold",
+          },
+          bodyStyles: {
+            fontSize: 7.5,
+            textColor: [51, 65, 85],
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252],
+          },
+          columnStyles: {
+            0: { cellWidth: 8 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 32 },
+            3: { cellWidth: 60 },
+            4: { cellWidth: 22 },
+            5: { cellWidth: 24 },
+            6: { cellWidth: 20, fontStyle: "bold" },
+          },
+          margin: { left: 14, right: 14 },
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      if (y > 240) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("EXECUTIVE NARRATIVE & DELIVERABLE HIGHLIGHTS", 14, y);
+      y += 5;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+
+      const cleanContent = (report.content || "")
+        .replace(/#{1,6}\s+/g, "")
+        .replace(/\*\*/g, "");
+      const lines = doc.splitTextToSize(cleanContent, pageWidth - 28);
+
+      for (let i = 0; i < lines.length; i++) {
+        if (y > 275) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(lines[i], 14, y);
+        y += 4.5;
+      }
+
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `WorkTrail AI • Confidential Audit Report • Page ${p} of ${totalPages}`,
+          14,
+          doc.internal.pageSize.getHeight() - 8
+        );
+      }
+
+      doc.save(`${(report.title || "Work_Report").replace(/\s+/g, "_")}.pdf`);
+      toast.success("Executive PDF exported successfully!");
     } catch (err: any) {
+      console.error(err);
       toast.error("Failed to generate PDF");
     }
   };
@@ -101,27 +525,69 @@ export default function ReportsPage() {
   const exportExcel = (report: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
-      const rows = [
-        ["WorkTrail AI Performance Report"],
-        ["Title", report.title],
-        ["Type", report.type],
+      const tasks = report.tasks || [];
+      const summaryRows = [
+        ["WORKTRAIL AI - EXECUTIVE WORK AUDIT REPORT"],
+        [""],
+        ["Report Title", report.title],
+        ["Scope", report.type],
         ["Period Start", report.periodStart],
         ["Period End", report.periodEnd],
+        ["Generated Date", new Date().toLocaleString()],
         ["Total Hours Worked", report.hoursWorked],
         ["Tasks Completed", report.tasksCompleted],
         ["Productivity Score", `${report.productivityScore}%`],
         [""],
-        ["Content"],
+        ["EXECUTIVE NARRATIVE SUMMARY"],
         [report.content],
       ];
 
-      const ws = XLSX.utils.aoa_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Report");
-      XLSX.writeFile(wb, `${report.title.replace(/\s+/g, "_")}.xlsx`);
-      toast.success("Excel sheet exported successfully!");
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Executive Summary");
+
+      if (tasks.length > 0) {
+        const taskHeaders = [
+          "#",
+          "Date",
+          "Workplace",
+          "Deliverable Title",
+          "Category",
+          "Start Time",
+          "End Time",
+          "Status",
+          "Priority",
+          "Description",
+          "Notes / Action Items",
+          "Learnings / Insights",
+          "Tags",
+        ];
+
+        const taskRows = tasks.map((t: any, idx: number) => [
+          idx + 1,
+          t.date || "",
+          t.organization || "Galactic 3D",
+          t.title || "",
+          t.category || "",
+          t.startTime || "",
+          t.endTime || "",
+          t.status || "COMPLETED",
+          t.priority || "MEDIUM",
+          t.description || "",
+          t.notes || "",
+          t.learnings || "",
+          t.tags || "",
+        ]);
+
+        const wsTasks = XLSX.utils.aoa_to_sheet([taskHeaders, ...taskRows]);
+        XLSX.utils.book_append_sheet(wb, wsTasks, "Itemized Deliverables");
+      }
+
+      XLSX.writeFile(wb, `${(report.title || "Work_Report").replace(/\s+/g, "_")}.xlsx`);
+      toast.success("Executive Excel workbook exported successfully!");
     } catch (err: any) {
-      toast.error("Failed to export Excel");
+      console.error(err);
+      toast.error("Failed to export Excel workbook");
     }
   };
 
@@ -288,25 +754,42 @@ export default function ReportsPage() {
         <Modal
           isOpen={!!viewingReport}
           onClose={() => setViewingReport(null)}
-          title={viewingReport.title}
+          title="Executive Performance & Deliverables Report"
           description={`Period: ${viewingReport.periodStart} to ${viewingReport.periodEnd} | Score: ${viewingReport.productivityScore}%`}
           maxWidth="4xl"
         >
           <div className="space-y-4 pt-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-muted/30 border border-border text-xs">
-              <div className="flex items-center gap-3">
-                <span>
-                  Hours: <strong>{viewingReport.hoursWorked} hrs</strong>
-                </span>
-                <span>
-                  Deliverables: <strong>{viewingReport.tasksCompleted}</strong>
-                </span>
-                <Badge variant="success" className="text-[10px]">
-                  Efficiency Index: {viewingReport.productivityScore}%
-                </Badge>
+            {/* Executive Action Header */}
+            <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60">
+                    <ShieldCheck className="h-3 w-3" /> OFFICIAL AUDIT
+                  </span>
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                    {viewingReport.type}
+                  </Badge>
+                </div>
+                <h3 className="text-base font-extrabold text-foreground mt-1">
+                  {viewingReport.title}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Period: <strong>{viewingReport.periodStart}</strong> to <strong>{viewingReport.periodEnd}</strong>
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Action Buttons: Toggle, Copy, Print, PDF, Excel */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setViewMode(viewMode === "FORMATTED" ? "RAW" : "FORMATTED")}
+                  className="text-xs flex items-center gap-1"
+                >
+                  {viewMode === "FORMATTED" ? <Code className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  <span>{viewMode === "FORMATTED" ? "Markdown" : "Formatted"}</span>
+                </Button>
+
                 <Button
                   size="sm"
                   variant="outline"
@@ -316,20 +799,32 @@ export default function ReportsPage() {
                   {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>{copied ? "Copied" : "Copy"}</span>
                 </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handlePrint(viewingReport)}
+                  className="text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print</span>
+                </Button>
+
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={(e) => exportPDF(viewingReport, e)}
-                  className="text-xs flex items-center gap-1 text-rose-600"
+                  className="text-xs flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>PDF</span>
                 </Button>
+
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={(e) => exportExcel(viewingReport, e)}
-                  className="text-xs flex items-center gap-1 text-emerald-600"
+                  className="text-xs flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
                   <span>Excel</span>
@@ -337,9 +832,54 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* Markdown Body */}
-            <div className="p-5 rounded-xl border border-border bg-card max-h-[65vh] overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed font-sans text-foreground">
-              {viewingReport.content}
+            {/* 4 Executive KPI Ribbon Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-3 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
+                  <Clock className="h-3.5 w-3.5 text-indigo-500" /> Tracked Time
+                </div>
+                <div className="text-lg font-black text-foreground mt-1">
+                  {viewingReport.hoursWorked} <span className="text-xs font-normal text-muted-foreground">hrs</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Deliverables
+                </div>
+                <div className="text-lg font-black text-foreground mt-1">
+                  {viewingReport.tasksCompleted} <span className="text-xs font-normal text-muted-foreground">completed</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
+                  <TrendingUp className="h-3.5 w-3.5 text-amber-500" /> Productivity
+                </div>
+                <div className="text-lg font-black text-foreground mt-1">
+                  {viewingReport.productivityScore}% <span className="text-xs font-normal text-muted-foreground">score</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-semibold uppercase">
+                  <Sparkles className="h-3.5 w-3.5 text-purple-500" /> Audit Engine
+                </div>
+                <div className="text-lg font-black text-foreground mt-1">
+                  Gemini <span className="text-xs font-normal text-muted-foreground">Verified</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="rounded-xl border border-border bg-muted/20 p-4 max-h-[55vh] overflow-y-auto">
+              {viewMode === "FORMATTED" ? (
+                <FormattedReportView content={viewingReport.content} tasks={viewingReport.tasks} />
+              ) : (
+                <pre className="p-4 rounded-lg bg-card text-xs font-mono whitespace-pre-wrap leading-relaxed border border-border text-foreground">
+                  {viewingReport.content}
+                </pre>
+              )}
             </div>
 
             <div className="flex justify-end pt-2 border-t border-border">

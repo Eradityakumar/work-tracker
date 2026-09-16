@@ -33,13 +33,15 @@ export async function POST(req: NextRequest) {
     let tasksCompleted = 0;
     let productivityScore = 85;
 
+    let tasks: any[] = [];
+
     if (type === "DAILY") {
       title = `Daily Work Report – ${format(baseDate, "MMMM d, yyyy")}`;
       const rawTasks = await prisma.workLog.findMany({
         where: { userId, date: dateStr },
         orderBy: [{ startTime: "asc" }],
       });
-      const tasks = rawTasks.map((t) => ({
+      tasks = rawTasks.map((t) => ({
         ...t,
         durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
       }));
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
         },
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
       });
-      const tasks = rawTasks.map((t) => ({
+      tasks = rawTasks.map((t) => ({
         ...t,
         durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
       }));
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
         },
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
       });
-      const tasks = rawTasks.map((t) => ({
+      tasks = rawTasks.map((t) => ({
         ...t,
         durationMinutes: t.durationMinutes || calculateDuration(t.startTime, t.endTime),
       }));
@@ -119,7 +121,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ report }, { status: 201 });
+    return NextResponse.json({ report: { ...report, tasks } }, { status: 201 });
   } catch (error: any) {
     console.error("Error generating report:", error);
     return NextResponse.json(

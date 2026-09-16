@@ -18,7 +18,32 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
   const lower = raw.toLowerCase();
   const today = new Date().toISOString().split("T")[0];
 
-  // 1. Organization Detection
+  // 1. Date Detection (extract from "Date: 15-09-2026", "15/09/2026", "yesterday", etc.)
+  let extractedDate = today;
+  const explicitDateMatch = raw.match(/\bdate[:\-–\s]+([0-9]{1,4}[-/.][0-9]{1,2}[-/.][0-9]{1,4})\b/i);
+  if (explicitDateMatch) {
+    const dStr = explicitDateMatch[1];
+    const dmy = dStr.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (dmy) {
+      extractedDate = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+    } else {
+      const ymd = dStr.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+      if (ymd) {
+        extractedDate = `${ymd[1]}-${String(ymd[2]).padStart(2, "0")}-${String(ymd[3]).padStart(2, "0")}`;
+      }
+    }
+  } else if (/\byesterday\b/i.test(lower)) {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    extractedDate = y.toISOString().split("T")[0];
+  } else {
+    const generalDateMatch = raw.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b/);
+    if (generalDateMatch) {
+      extractedDate = `${generalDateMatch[3]}-${String(generalDateMatch[2]).padStart(2, "0")}-${String(generalDateMatch[1]).padStart(2, "0")}`;
+    }
+  }
+
+  // 2. Organization Detection
   let organization = "Galactic 3D";
   if (/\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|syllabus|curriculum|lab)\b/i.test(lower)) {
     organization = "Cambridge Institute of Technology";
@@ -266,7 +291,7 @@ export function parseVoiceLocally(transcript: string): ParsedVoiceWorkLog {
     title,
     description: raw || "Completed work deliverables.",
     category,
-    date: today,
+    date: extractedDate,
     startTime,
     endTime,
     priority,

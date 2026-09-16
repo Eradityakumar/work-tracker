@@ -1571,7 +1571,32 @@
       const lower = raw.toLowerCase();
       const today = new Date().toISOString().split("T")[0];
 
-      // 1. Organization Detection
+      // 1. Date Detection
+      let extractedDate = today;
+      const explicitDateMatch = raw.match(/\bdate[:\-–\s]+([0-9]{1,4}[-/.][0-9]{1,2}[-/.][0-9]{1,4})\b/i);
+      if (explicitDateMatch) {
+        const dStr = explicitDateMatch[1];
+        const dmy = dStr.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+        if (dmy) {
+          extractedDate = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+        } else {
+          const ymd = dStr.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+          if (ymd) {
+            extractedDate = `${ymd[1]}-${String(ymd[2]).padStart(2, "0")}-${String(ymd[3]).padStart(2, "0")}`;
+          }
+        }
+      } else if (/\byesterday\b/i.test(lower)) {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        extractedDate = y.toISOString().split("T")[0];
+      } else {
+        const generalDateMatch = raw.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b/);
+        if (generalDateMatch) {
+          extractedDate = `${generalDateMatch[3]}-${String(generalDateMatch[2]).padStart(2, "0")}-${String(generalDateMatch[1]).padStart(2, "0")}`;
+        }
+      }
+
+      // 2. Organization Detection
       let organization = "Galactic 3D";
       if (/\b(cambridge|cit|institute|college|class|lecture|exam|student|students|faculty|campus|academic|syllabus|curriculum|lab)\b/i.test(lower)) {
         organization = "Cambridge Institute of Technology";
@@ -1753,7 +1778,7 @@
         title,
         description: raw || "Completed work deliverables.",
         category,
-        date: today,
+        date: extractedDate,
         startTime,
         endTime,
         priority,
@@ -1773,7 +1798,14 @@
       if (data.description) document.getElementById('taskDescription').value = data.description;
       if (data.category) document.getElementById('taskCategory').value = data.category;
       if (data.priority) document.getElementById('taskPriority').value = data.priority;
-      if (data.date) document.getElementById('taskDate').value = data.date;
+      if (data.date) {
+        let d = String(data.date).trim();
+        const dmy = d.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+        if (dmy) {
+          d = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+        }
+        document.getElementById('taskDate').value = d;
+      }
       if (data.startTime) document.getElementById('taskStartTime').value = data.startTime;
       if (data.endTime) document.getElementById('taskEndTime').value = data.endTime;
       if (data.notes !== undefined && document.getElementById('taskNotes')) document.getElementById('taskNotes').value = data.notes;
@@ -1797,7 +1829,7 @@
   "title": "Concise professional title (3-7 words, Title Cased)",
   "description": "Clean summary of deliverables worked on",
   "category": "Meeting" | "Development" | "Design" | "Research" | "Testing" | "Documentation" | "Other",
-  "date": "${today}",
+  "date": "YYYY-MM-DD",
   "startTime": "09:00",
   "endTime": "10:30",
   "priority": "HIGH" | "MEDIUM" | "LOW",
@@ -1806,6 +1838,11 @@
   "learnings": "Key takeaways, insights, or roadmap decisions",
   "tags": "Comma-separated keywords"
 }
+
+Rules:
+1. Date: Look carefully for any date specified in the text (e.g. "Date: 15-09-2026", "15/09/2026", "2026-09-15", "yesterday", "Sep 15"). Format it strictly as standard ISO "YYYY-MM-DD" (e.g. "15-09-2026" becomes "2026-09-15"). Only if no date is mentioned, use "${today}".
+2. Organization: Infer strictly. If 3D, WebGL, CAD, software, UI, sprint, or general -> "Galactic 3D". If college, exam, syllabus, student, lecture, academic -> "Cambridge Institute of Technology". Default to "Galactic 3D".
+3. Title: Professional Title Case.
 
 Work Summary:
 ${transcript}`
@@ -1826,7 +1863,15 @@ ${transcript}`
             const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (rawText) {
               const cleanJson = rawText.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-              return JSON.parse(cleanJson);
+              const parsed = JSON.parse(cleanJson);
+              if (parsed.date) {
+                const d = String(parsed.date).trim();
+                const dmy = d.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+                if (dmy) {
+                  parsed.date = `${dmy[3]}-${String(dmy[2]).padStart(2, "0")}-${String(dmy[1]).padStart(2, "0")}`;
+                }
+              }
+              return parsed;
             }
           }
         } catch (e) {
